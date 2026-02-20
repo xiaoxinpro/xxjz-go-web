@@ -1,0 +1,57 @@
+# 小歆记账 - 主配置文件（环境变量可覆盖对应项）
+
+server:
+  port: 8080   # Windows 若 8080 被保留可改为 8081/8888，或见文档排除保留
+  mode: release # debug / release
+
+database:
+  driver: sqlite # sqlite | mysql | postgres
+  dsn: "./data/xxjz.db"  # sqlite: 文件路径; mysql: "user:pass@tcp(host:3306)/dbname"; postgres: "host=... user=... password=... dbname=... sslmode=disable"
+  table_prefix: "xxjz_"
+
+app:
+  title: "小歆记账App"
+  keywords: ""
+  description: ""
+  welcome: "欢迎使用！"
+  version: "2.2.0"
+
+user:
+  login_times: 10
+  page_size: 15
+  admin_uid: 1
+  demo:
+    username: "demo"
+    password: "xxgzs.org"
+
+mail:
+  host: ""
+  secure: "ssl"
+  port: "465"
+  username: ""
+  password: ""
+  from: ""
+  from_name: "小歆记账"
+
+wechat:
+  enable: false
+  openid_key: "openid"
+  secret: "secret"
+
+money:
+  format_decimals: 2
+  format_point: "."
+  format_thousands: ","
+  max_value: 999999999.99
+
+limits:
+  max_class_name: 24
+  max_funds_name: 24
+  max_mark_value: 64
+
+image:
+  max_size: 3145728   # 3*1024*1024
+  max_count: 9
+  allowed_ext: ["jpg", "gif", "png", "jpeg"]
+  root_path: "/Uploads/"
+  cache_url: ""

@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  xxjz:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - CONFIG=config.yaml
+      - PORT=8080
+    volumes:
+      - xxjz-data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+volumes:
+  xxjz-data:

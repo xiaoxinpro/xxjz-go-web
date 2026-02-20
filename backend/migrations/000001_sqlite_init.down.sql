@@ -1,0 +1,15 @@
+DROP INDEX IF EXISTS idx_user_login_id;
+DROP INDEX IF EXISTS idx_transfer_uid;
+DROP INDEX IF EXISTS idx_funds_uid;
+DROP INDEX IF EXISTS idx_class_ufid;
+DROP INDEX IF EXISTS idx_account_actime;
+DROP INDEX IF EXISTS idx_account_jiid;
+DROP TABLE IF EXISTS xxjz_user_push;
+DROP TABLE IF EXISTS xxjz_user_login;
+DROP TABLE IF EXISTS xxjz_user_config;
+DROP TABLE IF EXISTS xxjz_user;
+DROP TABLE IF EXISTS xxjz_account_transfer;
+DROP TABLE IF EXISTS xxjz_account_image;
+DROP TABLE IF EXISTS xxjz_account_funds;
+DROP TABLE IF EXISTS xxjz_account_class;
+DROP TABLE IF EXISTS xxjz_account;
