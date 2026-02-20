@@ -85,9 +85,10 @@ func runSQLiteMigrations(db *sql.DB) error {
 	statements := splitSQL(string(data))
 	for _, s := range statements {
 		s = strings.TrimSpace(s)
-		if s == "" || strings.HasPrefix(s, "--") {
+		if s == "" {
 			continue
 		}
+		// 不按 "--" 跳过，否则首段 "注释 + CREATE TABLE" 会被整段跳过导致表未创建
 		if _, err := db.Exec(s); err != nil {
 			return fmt.Errorf("migration: %w", err)
 		}

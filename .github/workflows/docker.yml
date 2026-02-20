@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, master]
     tags: ['v*']
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -33,6 +34,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+            type=raw,value=pr-${{ github.event.pull_request.number }},enable=${{ github.event_name == 'pull_request' }}
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
