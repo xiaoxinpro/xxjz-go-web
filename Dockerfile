@@ -8,12 +8,11 @@ RUN npm run build
 
 # Stage 2: build backend
 FROM golang:1.21-alpine AS backend
-RUN apk add --no-cache gcc musl-dev
 WORKDIR /app
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ .
-RUN CGO_ENABLED=1 go build -o /server ./cmd/server
+RUN go build -o /server ./cmd/server
 
 # Stage 3: runtime
 FROM alpine:3.19
