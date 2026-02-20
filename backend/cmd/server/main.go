@@ -1,0 +1,140 @@
+package main
+
+import (
+	"log"
+	"os"
+	"strconv"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-gonic/gin"
+
+	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/config"
+	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/handler"
+	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/repository"
+	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/service"
+	"github.com/xiaoxinpro/xxjz-go-web/backend/pkg/db"
+)
+
+func main() {
+	configPath := os.Getenv("CONFIG")
+	if configPath == "" {
+		configPath = "config.yaml"
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			configPath = "../config.yaml"
+		}
+	}
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("load config: %v", err)
+	}
+
+	gin.SetMode(cfg.Server.Mode)
+
+	database, err := db.Open(cfg)
+	if err != nil {
+		log.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	userRepo := repository.NewUserRepo(database)
+	accountRepo := repository.NewAccountRepo(database)
+	fundsRepo := repository.NewFundsRepo(database)
+	classRepo := repository.NewClassRepo(database)
+	userSvc := service.NewUserService(cfg, userRepo)
+	statSvc := service.NewStatisticService(accountRepo)
+	fundsSvc := service.NewFundsService(cfg, fundsRepo)
+	classSvc := service.NewClassService(cfg, classRepo)
+	apiHandler := handler.NewAPIHandler(cfg, userSvc, statSvc, fundsSvc, classSvc, database)
+
+	secret := os.Getenv("SESSION_SECRET")
+	if secret == "" {
+		secret = "xxjz-default-secret-change-in-production"
+	}
+	store := cookie.NewStore([]byte(secret))
+	store.Options(sessions.Options{Path: "/", MaxAge: 86400 * 7, HttpOnly: true})
+
+	r := gin.Default()
+	r.Use(sessions.Sessions("xxjz_session", store))
+
+	// Init (no auth): status + setup + import (import requires admin when already initialized)
+	apiInit := r.Group("/api")
+	apiInit.GET("/init/status", apiHandler.InitStatus)
+	apiInit.POST("/init/setup", apiHandler.InitSetup)
+	apiInit.POST("/init/import", apiHandler.InitImport)
+	compatInit := r.Group("/Home/Api")
+	compatInit.GET("/init/status", apiHandler.InitStatus)
+	compatInit.POST("/init/setup", apiHandler.InitSetup)
+	compatInit.POST("/init/import", apiHandler.InitImport)
+
+	// API routes (compatible with old path: /Home/Api/xxx and new /api/xxx)
+	api := r.Group("/api")
+	{
+		api.GET("/login", apiHandler.Login)
+		api.POST("/login", apiHandler.Login)
+		api.GET("/version", apiHandler.Version)
+		api.POST("/version", apiHandler.Version)
+		api.GET("/user", apiHandler.User)
+		api.POST("/user", apiHandler.User)
+		api.GET("/statistic", apiHandler.Statistic)
+		api.POST("/statistic", apiHandler.Statistic)
+		api.GET("/funds", apiHandler.Funds)
+		api.POST("/funds", apiHandler.Funds)
+		api.GET("/aclass", apiHandler.Aclass)
+		api.POST("/aclass", apiHandler.Aclass)
+		api.GET("/account", apiHandler.Account)
+		api.POST("/account", apiHandler.Account)
+		api.GET("/transfer", apiHandler.Transfer)
+		api.POST("/transfer", apiHandler.Transfer)
+		api.GET("/find", apiHandler.Find)
+		api.POST("/find", apiHandler.Find)
+		api.GET("/chart", apiHandler.Chart)
+		api.POST("/chart", apiHandler.Chart)
+		api.GET("/autocopy", apiHandler.Autocopy)
+		api.POST("/autocopy", apiHandler.Autocopy)
+	}
+	compat := r.Group("/Home/Api")
+	{
+		compat.GET("/login", apiHandler.Login)
+		compat.POST("/login", apiHandler.Login)
+		compat.GET("/version", apiHandler.Version)
+		compat.POST("/version", apiHandler.Version)
+		compat.GET("/user", apiHandler.User)
+		compat.POST("/user", apiHandler.User)
+		compat.GET("/statistic", apiHandler.Statistic)
+		compat.POST("/statistic", apiHandler.Statistic)
+		compat.GET("/funds", apiHandler.Funds)
+		compat.POST("/funds", apiHandler.Funds)
+		compat.GET("/aclass", apiHandler.Aclass)
+		compat.POST("/aclass", apiHandler.Aclass)
+		compat.GET("/account", apiHandler.Account)
+		compat.POST("/account", apiHandler.Account)
+		compat.GET("/transfer", apiHandler.Transfer)
+		compat.POST("/transfer", apiHandler.Transfer)
+		compat.GET("/find", apiHandler.Find)
+		compat.POST("/find", apiHandler.Find)
+		compat.GET("/chart", apiHandler.Chart)
+		compat.POST("/chart", apiHandler.Chart)
+		compat.GET("/autocopy", apiHandler.Autocopy)
+		compat.POST("/autocopy", apiHandler.Autocopy)
+	}
+	api.POST("/admin/import", apiHandler.AdminImport)
+	compat.POST("/admin/import", apiHandler.AdminImport)
+
+	// SPA static files (when ./static exists, e.g. in Docker)
+	if info, err := os.Stat("static"); err == nil && info.IsDir() {
+		r.Static("/assets", "static/assets")
+		r.NoRoute(func(c *gin.Context) {
+			c.File("static/index.html")
+		})
+	}
+
+	addr := ":" + strconv.Itoa(cfg.Server.Port)
+	if cfg.Server.Port == 0 {
+		addr = ":8080"
+	}
+	log.Printf("listening on %s", addr)
+	if err := r.Run(addr); err != nil {
+		log.Fatal(err)
+	}
+}

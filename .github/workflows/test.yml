@@ -1,0 +1,28 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.21', '1.22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Run tests
+        run: |
+          cd backend
+          go mod tidy
+          go test -v ./...
+        env:
+          GOOS: linux
+          # sqlite requires CGO; disable for linux CI if needed or use modernc.org/sqlite
+          CGO_ENABLED: 1
