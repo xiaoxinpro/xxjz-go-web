@@ -60,7 +60,10 @@ func (s *ClassService) AddNewClass(classname string, classtype int, uid int64) (
 }
 
 func (s *ClassService) EditClassName(classID int64, name string, classtype int, uid int64) (interface{}, error) {
-	if err := s.repo.UpdateName(classID, uid, name); err != nil {
+	if classtype != 1 && classtype != 2 {
+		return []interface{}{false, "类别无效"}, nil
+	}
+	if err := s.repo.UpdateNameAndType(classID, uid, name, classtype); err != nil {
 		return []interface{}{false, "更新失败"}, nil
 	}
 	return []interface{}{true, "更新成功"}, nil

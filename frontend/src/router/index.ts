@@ -36,7 +36,10 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth) {
     const userStore = useUserStore()
-    if (userStore.uid <= 0) return { path: '/login', query: { redirect: to.fullPath } }
+    if (userStore.uid <= 0) {
+      const ok = await userStore.restoreFromSession()
+      if (!ok) return { path: '/login', query: { redirect: to.fullPath } }
+    }
   }
 })
 

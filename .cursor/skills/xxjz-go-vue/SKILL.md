@@ -27,3 +27,10 @@ description: 小歆记账项目 Go 后端与 Vue3 前端的代码风格与约定
 
 - **配置**: 以项目根目录或 backend 下的 `config.yaml` 为准；环境变量仅作覆盖，不替代完整配置。
 - **禁止**: 在代码中硬编码数据库连接串、密钥、管理员 UID；禁止提交含敏感信息的 config 覆盖版本。
+
+## 构建
+
+使用构建脚本，自动构建前端与后端的代码，构建后的输出文件会自动放置到 `build` 目录下，可以直接运行 `.\build\server.exe` 启动项目。
+
+- **Windows**：命令行运行 `.\scripts\build.ps1`
+- **Linux**：命令行运行 `./scripts/build.sh`

@@ -103,7 +103,14 @@ async function onImport() {
     importForm.ok = data.ok
     importForm.message = data.msg || (data.ok ? '导入成功' : '导入失败')
     if (data.ok) {
-      router.push('/login')
+      if (data.initialized) {
+        router.push('/login')
+      } else {
+        importForm.message = '导入成功，请刷新页面后登录'
+        const statusRes = await fetch(`${API}/init/status`, { credentials: 'include' })
+        const statusData = await statusRes.json().catch(() => ({}))
+        if (statusData.initialized) router.push('/login')
+      }
     }
   } catch (e) {
     importForm.ok = false

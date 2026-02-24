@@ -11,6 +11,7 @@ import (
 
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/config"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/handler"
+	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/importsql"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/repository"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/service"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/pkg/db"
@@ -36,6 +37,13 @@ func main() {
 		log.Fatalf("open db: %v", err)
 	}
 	defer database.Close()
+
+	// SQLite：启动时补齐可能由旧版 MySQL 导入缺失的 sort 列，避免 no such column: sort
+	if cfg.Database.Driver == "sqlite" || cfg.Database.Driver == "sqlite3" {
+		if err := importsql.EnsureImportSchema(database); err != nil {
+			log.Printf("EnsureImportSchema: %v", err)
+		}
+	}
 
 	userRepo := repository.NewUserRepo(database)
 	accountRepo := repository.NewAccountRepo(database)
