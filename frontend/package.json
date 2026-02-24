@@ -10,9 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "echarts": "^6.0.0",
+    "pinia": "^2.1.7",
     "vue": "^3.4.0",
-    "vue-router": "^4.2.5",
-    "pinia": "^2.1.7"
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.2",

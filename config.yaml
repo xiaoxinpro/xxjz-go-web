@@ -1,7 +1,7 @@
 # 小歆记账 - 主配置文件（环境变量可覆盖对应项）
 
 server:
-  port: 8080   # Windows 若 8080 被保留可改为 8081/8888，或见文档排除保留
+  port: 12345   # Windows 若 8080 被保留可改为 8081/8888，或见文档排除保留
   mode: release # debug / release
 
 database:
