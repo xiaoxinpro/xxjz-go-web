@@ -30,5 +30,18 @@ export const useUserStore = defineStore('user', () => {
     username.value = ''
   }
 
-  return { uid, username, login, logout }
+  /** Restore login state from server session (e.g. after refresh). Returns true if session is valid. */
+  async function restoreFromSession(): Promise<boolean> {
+    const res = await fetch(`${API}/user?type=get`, { credentials: 'include' })
+    const data = await res.json().catch(() => ({}))
+    const id = Number(data.uid)
+    if (id > 0) {
+      uid.value = id
+      username.value = data.username || ''
+      return true
+    }
+    return false
+  }
+
+  return { uid, username, login, logout, restoreFromSession }
 })

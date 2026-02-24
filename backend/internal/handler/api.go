@@ -203,7 +203,13 @@ func (h *APIHandler) InitImport(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": false, "msg": "导入失败: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true, "msg": "导入成功", "statements": len(statements)})
+	if err := importsql.EnsureImportSchema(h.db); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "msg": "导入成功但表结构补齐失败: " + err.Error()})
+		return
+	}
+	// 不修改导入数据中的 ufid/uid，保留多用户：每个用户登录后只看到自己的分类和资金账户
+	initialized, _ = h.userSvc.IsInitialized()
+	c.JSON(http.StatusOK, gin.H{"ok": true, "msg": "导入成功", "statements": len(statements), "initialized": initialized})
 }
 
 // Login handles POST/GET: username, password, submit -> { uid, uname }
@@ -274,7 +280,13 @@ func (h *APIHandler) User(c *gin.Context) {
 	}
 
 	out := gin.H{}
-	if uid <= 0 || reqUID != uid {
+	if uid <= 0 {
+		out["uid"] = 0
+		c.JSON(http.StatusOK, out)
+		return
+	}
+	// When client passes uid, it must match session (for explicit user fetch).
+	if reqUID != 0 && reqUID != uid {
 		out["uid"] = 0
 		c.JSON(http.StatusOK, out)
 		return
@@ -414,6 +426,7 @@ func (h *APIHandler) Funds(c *gin.Context) {
 func (h *APIHandler) Aclass(c *gin.Context) {
 	sess := sessions.Default(c)
 	uid := session.GetUID(sess)
+	typ := getParam(c, "type")
 	out := gin.H{}
 	if uid <= 0 {
 		out["uid"] = 0
@@ -422,7 +435,6 @@ func (h *APIHandler) Aclass(c *gin.Context) {
 		return
 	}
 	out["uid"] = uid
-	typ := getParam(c, "type")
 	dataEnc := getParam(c, "data")
 	var data map[string]interface{}
 	if dataEnc != "" {
@@ -785,5 +797,11 @@ func (h *APIHandler) AdminImport(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": false, "msg": "导入失败: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true, "msg": "导入成功", "statements": len(statements)})
+	if err := importsql.EnsureImportSchema(h.db); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "msg": "导入成功但表结构补齐失败: " + err.Error()})
+		return
+	}
+	// 不修改导入数据中的 ufid/uid，保留多用户
+	initialized, _ := h.userSvc.IsInitialized()
+	c.JSON(http.StatusOK, gin.H{"ok": true, "msg": "导入成功", "statements": len(statements), "initialized": initialized})
 }

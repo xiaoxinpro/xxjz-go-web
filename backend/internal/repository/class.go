@@ -70,6 +70,12 @@ func (r *ClassRepo) UpdateName(classID, uid int64, name string) error {
 	return err
 }
 
+// UpdateNameAndType updates classname and classtype for the given class.
+func (r *ClassRepo) UpdateNameAndType(classID, uid int64, name string, classtype int) error {
+	_, err := r.db.Exec(`UPDATE xxjz_account_class SET classname = ?, classtype = ? WHERE classid = ? AND ufid = ?`, name, classtype, classID, uid)
+	return err
+}
+
 func (r *ClassRepo) Delete(classID, uid int64) error {
 	_, err := r.db.Exec(`DELETE FROM xxjz_account_class WHERE classid = ? AND ufid = ?`, classID, uid)
 	return err
