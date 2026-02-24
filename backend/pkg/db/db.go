@@ -28,7 +28,7 @@ func Open(cfg *config.Config) (*sql.DB, error) {
 				return nil, fmt.Errorf("create sqlite dir: %w", err)
 			}
 		}
-		db, err = sql.Open("sqlite3", dsn+"?_foreign_keys=off")
+		db, err = sql.Open("sqlite", dsn+"?_foreign_keys=off")
 		if err != nil {
 			return nil, err
 		}

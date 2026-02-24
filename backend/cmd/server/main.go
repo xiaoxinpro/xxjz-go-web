@@ -39,13 +39,18 @@ func main() {
 
 	userRepo := repository.NewUserRepo(database)
 	accountRepo := repository.NewAccountRepo(database)
+	transferRepo := repository.NewTransferRepo(database)
 	fundsRepo := repository.NewFundsRepo(database)
 	classRepo := repository.NewClassRepo(database)
 	userSvc := service.NewUserService(cfg, userRepo)
 	statSvc := service.NewStatisticService(accountRepo)
+	findSvc := service.NewFindService(accountRepo, transferRepo, cfg.User.PageSize)
 	fundsSvc := service.NewFundsService(cfg, fundsRepo)
 	classSvc := service.NewClassService(cfg, classRepo)
-	apiHandler := handler.NewAPIHandler(cfg, userSvc, statSvc, fundsSvc, classSvc, database)
+	accountSvc := service.NewAccountService(cfg, accountRepo, classRepo, fundsRepo)
+	transferSvc := service.NewTransferService(cfg, transferRepo, fundsRepo)
+	chartSvc := service.NewChartService(accountRepo, classRepo)
+	apiHandler := handler.NewAPIHandler(cfg, userSvc, statSvc, fundsSvc, classSvc, accountSvc, transferSvc, findSvc, chartSvc, database)
 
 	secret := os.Getenv("SESSION_SECRET")
 	if secret == "" {

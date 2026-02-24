@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -18,16 +19,105 @@ import (
 )
 
 type APIHandler struct {
-	cfg       *config.Config
-	userSvc   *service.UserService
-	statSvc   *service.StatisticService
-	fundsSvc  *service.FundsService
-	classSvc  *service.ClassService
-	db        *sql.DB
+	cfg         *config.Config
+	userSvc     *service.UserService
+	statSvc     *service.StatisticService
+	fundsSvc    *service.FundsService
+	classSvc    *service.ClassService
+	accountSvc  *service.AccountService
+	transferSvc *service.TransferService
+	findSvc     *service.FindService
+	chartSvc    *service.ChartService
+	db          *sql.DB
 }
 
-func NewAPIHandler(cfg *config.Config, userSvc *service.UserService, statSvc *service.StatisticService, fundsSvc *service.FundsService, classSvc *service.ClassService, db *sql.DB) *APIHandler {
-	return &APIHandler{cfg: cfg, userSvc: userSvc, statSvc: statSvc, fundsSvc: fundsSvc, classSvc: classSvc, db: db}
+func NewAPIHandler(cfg *config.Config, userSvc *service.UserService, statSvc *service.StatisticService, fundsSvc *service.FundsService, classSvc *service.ClassService, accountSvc *service.AccountService, transferSvc *service.TransferService, findSvc *service.FindService, chartSvc *service.ChartService, db *sql.DB) *APIHandler {
+	return &APIHandler{cfg: cfg, userSvc: userSvc, statSvc: statSvc, fundsSvc: fundsSvc, classSvc: classSvc, accountSvc: accountSvc, transferSvc: transferSvc, findSvc: findSvc, chartSvc: chartSvc, db: db}
+}
+
+// parseFindFilter extracts find filters from data; returns nil if no filters set.
+func parseFindFilter(data map[string]interface{}) *service.FindFilter {
+	var f service.FindFilter
+	hasFilter := false
+	if v, ok := data["fid"]; ok && v != nil {
+		switch x := v.(type) {
+		case float64:
+			f.Fid = int64(x)
+			if f.Fid != 0 {
+				hasFilter = true
+			}
+		case string:
+			if x != "" && x != "全部" {
+				f.Fid, _ = strconv.ParseInt(x, 10, 64)
+				if f.Fid != 0 {
+					hasFilter = true
+				}
+			}
+		}
+	}
+	if v, ok := data["zhifu"]; ok && v != nil {
+		switch x := v.(type) {
+		case float64:
+			f.Zhifu = int(x)
+			if f.Zhifu != 0 {
+				hasFilter = true
+			}
+		case string:
+			if x != "" {
+				f.Zhifu, _ = strconv.Atoi(x)
+				if f.Zhifu != 0 {
+					hasFilter = true
+				}
+			}
+		}
+	}
+	if v, ok := data["acclassid"]; ok && v != nil {
+		switch x := v.(type) {
+		case float64:
+			f.Acclassid = int64(x)
+			hasFilter = true
+		case string:
+			if x == "inTransfer" {
+				f.Acclassid = 1
+				hasFilter = true
+			} else if x == "outTransfer" {
+				f.Acclassid = 2
+				hasFilter = true
+			} else if x != "" {
+				f.Acclassid, _ = strconv.ParseInt(x, 10, 64)
+				hasFilter = true
+			}
+		}
+	}
+	if v, ok := data["starttime"]; ok {
+		if s, ok := v.(string); ok && s != "" {
+			parsed, err := time.ParseInLocation("2006-01-02", s, time.Local)
+			if err == nil {
+				f.StartTime = parsed.Unix()
+				hasFilter = true
+			}
+		}
+	}
+	if v, ok := data["endtime"]; ok {
+		if s, ok := v.(string); ok && s != "" {
+			parsed, err := time.ParseInLocation("2006-01-02", s, time.Local)
+			if err == nil {
+				f.EndTime = parsed.Unix()
+				f.EndTime += 86400 - 1 // end of day
+				hasFilter = true
+			}
+		}
+	}
+	if v, ok := data["acremark"]; ok {
+		if s, ok := v.(string); ok && s != "" {
+			f.Acremark = s
+			hasFilter = true
+		}
+	}
+	if !hasFilter {
+		return nil
+	}
+	return &f
 }
 
 // getParam returns GET or POST param (API supports both).
@@ -416,9 +506,53 @@ func (h *APIHandler) Account(c *gin.Context) {
 	case "get_id":
 		out["data"] = map[string]interface{}{}
 	case "add":
+		acmoney, _ := data["acmoney"].(float64)
+		acclassid, _ := data["acclassid"].(float64)
+		acremark, _ := data["acremark"].(string)
+		zhifu, _ := data["zhifu"].(float64)
+		fidVal := data["fid"]
+		var fid int64
+		switch v := fidVal.(type) {
+		case float64:
+			fid = int64(v)
+		case string:
+			fid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		var actime int64
+		if t, ok := data["actime"].(float64); ok && t > 0 {
+			actime = int64(t)
+		} else if s, ok := data["actime"].(string); ok && s != "" {
+			parsed, err := time.ParseInLocation("2006-01-02", s, time.Local)
+			if err == nil {
+				actime = parsed.Unix()
+			}
+		}
+		if actime == 0 {
+			now := time.Now()
+			actime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local).Unix()
+		}
+		ok, msg, acid := h.accountSvc.AddAccount(uid, acmoney, int64(acclassid), actime, acremark, int64(zhifu), fid)
+		if ok {
+			out["data"] = map[string]interface{}{"ret": true, "msg": msg, "acid": acid}
+		} else {
+			out["data"] = map[string]interface{}{"ret": false, "msg": msg}
+		}
+	case "edit":
 		out["data"] = map[string]interface{}{"ret": false, "msg": "功能开发中"}
-	case "edit", "del":
-		out["data"] = map[string]interface{}{"ret": false, "msg": "功能开发中"}
+	case "del":
+		var acid int64
+		switch v := data["acid"].(type) {
+		case float64:
+			acid = int64(v)
+		case string:
+			acid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		ok, msg := h.accountSvc.DeleteAccount(uid, acid)
+		if ok {
+			out["data"] = map[string]interface{}{"ret": true, "msg": msg}
+		} else {
+			out["data"] = map[string]interface{}{"ret": false, "msg": msg}
+		}
 	case "find":
 		out["data"] = map[string]interface{}{"ret": true, "msg": map[string]interface{}{"data": []interface{}{}, "page": 1, "pagemax": 1, "count": 0}}
 	case "get_image", "set_image", "del_image":
@@ -429,7 +563,7 @@ func (h *APIHandler) Account(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-// Transfer stub.
+// Transfer handles type=get, add, etc.
 func (h *APIHandler) Transfer(c *gin.Context) {
 	sess := sessions.Default(c)
 	uid := session.GetUID(sess)
@@ -442,16 +576,63 @@ func (h *APIHandler) Transfer(c *gin.Context) {
 	}
 	out["uid"] = uid
 	typ := getParam(c, "type")
+	dataEnc := getParam(c, "data")
+	var data map[string]interface{}
+	if dataEnc != "" {
+		dec, _ := base64.StdEncoding.DecodeString(dataEnc)
+		_ = json.Unmarshal(dec, &data)
+	}
+	if data == nil {
+		data = make(map[string]interface{})
+	}
 	switch typ {
 	case "get":
 		out["data"] = []interface{}{}
+	case "add":
+		money, _ := data["money"].(float64)
+		source_fid, _ := data["source_fid"].(float64)
+		target_fid, _ := data["target_fid"].(float64)
+		mark, _ := data["mark"].(string)
+		var timeVal int64
+		if t, ok := data["time"].(float64); ok && t > 0 {
+			timeVal = int64(t)
+		} else if s, ok := data["time"].(string); ok && s != "" {
+			parsed, err := time.ParseInLocation("2006-01-02", s, time.Local)
+			if err == nil {
+				timeVal = parsed.Unix()
+			}
+		}
+		if timeVal == 0 {
+			now := time.Now()
+			timeVal = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local).Unix()
+		}
+		ok, msg, tid := h.transferSvc.AddTransfer(uid, money, int64(source_fid), int64(target_fid), timeVal, mark)
+		if ok {
+			out["data"] = map[string]interface{}{"ret": true, "msg": msg, "tid": tid}
+		} else {
+			out["data"] = map[string]interface{}{"ret": false, "msg": msg}
+		}
+	case "del":
+		var tid int64
+		switch v := data["tid"].(type) {
+		case float64:
+			tid = int64(v)
+		case string:
+			tid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		ok, msg := h.transferSvc.DeleteTransfer(uid, tid)
+		if ok {
+			out["data"] = map[string]interface{}{"ret": true, "msg": msg}
+		} else {
+			out["data"] = map[string]interface{}{"ret": false, "msg": msg}
+		}
 	default:
 		out["data"] = map[string]interface{}{"ret": false, "msg": "功能开发中"}
 	}
 	c.JSON(http.StatusOK, out)
 }
 
-// Find stub.
+// Find returns merged account+transfer list for type=all; data is base64 JSON with jiid, page.
 func (h *APIHandler) Find(c *gin.Context) {
 	sess := sessions.Default(c)
 	uid := session.GetUID(sess)
@@ -463,11 +644,62 @@ func (h *APIHandler) Find(c *gin.Context) {
 		return
 	}
 	out["uid"] = uid
-	out["data"] = map[string]interface{}{"ret": true, "msg": map[string]interface{}{"data": []interface{}{}}}
+	typ := getParam(c, "type")
+	dataEnc := getParam(c, "data")
+	var data map[string]interface{}
+	if dataEnc != "" {
+		dec, err := base64.StdEncoding.DecodeString(dataEnc)
+		if err == nil {
+			_ = json.Unmarshal(dec, &data)
+		}
+	}
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+	jiid, _ := data["jiid"].(float64)
+	reqUID := int64(jiid)
+	if reqUID != uid {
+		out["data"] = map[string]interface{}{"ret": false, "msg": "未通过用户验证！"}
+		c.JSON(http.StatusOK, out)
+		return
+	}
+	page, _ := data["page"].(float64)
+	pageInt := int(page)
+	if pageInt < 1 {
+		pageInt = 1
+	}
+	switch typ {
+	case "all":
+		var result *service.FindResult
+		var err error
+		f := parseFindFilter(data)
+		if f != nil {
+			result, err = h.findSvc.FindTransferAccountDataFiltered(uid, pageInt, *f)
+		} else {
+			result, err = h.findSvc.FindTransferAccountData(uid, pageInt)
+		}
+		if err != nil {
+			out["data"] = map[string]interface{}{"ret": false, "msg": err.Error()}
+			c.JSON(http.StatusOK, out)
+			return
+		}
+		msg := map[string]interface{}{
+			"data":    result.Data,
+			"page":    result.Page,
+			"pagemax": result.PageMax,
+			"count":   result.Count,
+		}
+		msg["SumInMoney"] = result.SumInMoney
+		msg["SumOutMoney"] = result.SumOutMoney
+		msg["isTransfer"] = result.IsTransfer
+		out["data"] = map[string]interface{}{"ret": true, "msg": msg}
+	default:
+		out["data"] = map[string]interface{}{"ret": true, "msg": map[string]interface{}{"data": []interface{}{}, "page": 1, "pagemax": 1, "count": 0}}
+	}
 	c.JSON(http.StatusOK, out)
 }
 
-// Chart stub: type=year|month, returns JSON.
+// Chart: type=year with date (year or timestamp) returns getYearData-compatible JSON; type=month returns empty for now.
 func (h *APIHandler) Chart(c *gin.Context) {
 	sess := sessions.Default(c)
 	uid := session.GetUID(sess)
@@ -476,11 +708,28 @@ func (h *APIHandler) Chart(c *gin.Context) {
 		return
 	}
 	typ := getParam(c, "type")
+	dateStr := getParam(c, "date")
+	year := 0
+	if dateStr != "" {
+		if ts, err := strconv.ParseInt(dateStr, 10, 64); err == nil && ts > 0 {
+			year = time.Unix(ts, 0).Year()
+		} else if y, err := strconv.Atoi(dateStr); err == nil && y >= 2000 {
+			year = y
+		}
+	}
+	if year == 0 {
+		year = time.Now().Year()
+	}
 	if typ == "month" {
 		c.JSON(http.StatusOK, []interface{}{})
 		return
 	}
-	c.JSON(http.StatusOK, []interface{}{})
+	data, err := h.chartSvc.YearData(uid, year)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"uid": uid, "data": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, data)
 }
 
 // Autocopy stub: admin only get/updata.
