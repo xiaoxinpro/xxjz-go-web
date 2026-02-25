@@ -70,6 +70,26 @@ func (r *TransferRepo) Delete(tid, uid int64) (int64, error) {
 	return res.RowsAffected()
 }
 
+// ReassignFunds moves transfer rows from oldFID to newFID for the user (both source_fid and target_fid).
+func (r *TransferRepo) ReassignFunds(uid, oldFID, newFID int64) (int64, error) {
+	var total int64
+	// 更新转出账户
+	if res, err := r.db.Exec(`UPDATE xxjz_account_transfer SET source_fid = ? WHERE uid = ? AND source_fid = ?`, newFID, uid, oldFID); err != nil {
+		return 0, err
+	} else {
+		n, _ := res.RowsAffected()
+		total += n
+	}
+	// 更新转入账户
+	if res, err := r.db.Exec(`UPDATE xxjz_account_transfer SET target_fid = ? WHERE uid = ? AND target_fid = ?`, newFID, uid, oldFID); err != nil {
+		return 0, err
+	} else {
+		n, _ := res.RowsAffected()
+		total += n
+	}
+	return total, nil
+}
+
 // TransferFilter for filtered list/count. Zero values mean no filter. Direction: 0=all, 1=in (target_fid), 2=out (source_fid).
 type TransferFilter struct {
 	Fid       int64

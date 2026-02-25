@@ -98,8 +98,21 @@
 - **参数**: `type`, `data`（base64 JSON）
 - **type**: `get` | `get_year` | `get_all_year` | `get_id` | `add` | `edit` | `del` | `find` | `get_image` | `set_image` | `del_image`
 - **get**: data 含分页与时间范围（如 gettype, year, month, day, page）
-- **add**: data 含 acmoney, acclassid, actime, acremark, zhifu, fid 等
+- **get_id**: data 含 `acid`, `jiid`；返回单条记账（id, money, classid, class, typeid, type, funds, fid, time, mark），用于编辑页。
+- **add**: data 含 acmoney, acclassid, actime, acremark, zhifu, fid 等；成功返回 `{ "ret": true, "msg", "acid" }`。
+- **edit**: data 含 acid, acmoney, acclassid, actime, acremark, zhifu, fid；返回 `{ "ret", "msg" }`。
+- **del**: data 含 acid；删除记账及其图片附件。
+- **get_image**: data 含 acid；返回 `{ "ret": true, "msg": [ { "id", "name", "url", "time" } ] }`。
+- **set_image**: data 含 id（图片 ID）, acid；将图片绑定到该记账。
+- **del_image**: data 含 acid, id（图片 ID）；删除单张图片。
 - **响应**: `{ "uid", "data": { "ret"?, "msg"?, "data"?, "page"?, "pagemax"?, "count"? } }`
+
+### 7.1 记账图片上传
+
+- **URL**: `POST /api/account/upload` 或 `POST /Home/Api/account/upload`
+- **Content-Type**: `multipart/form-data`
+- **字段**: `acid`（记账 ID，可选，0 表示暂不绑定）、`file` 或 `file[]`（多文件）
+- **响应**: `{ "uid", "upload": [ { "id", "name", "url", "time" } ], "data": "上传成功！" }` 或错误时 `upload: false`, `data` 为提示文案。图片通过静态路径 `/uploads/...` 访问。
 
 ---
 

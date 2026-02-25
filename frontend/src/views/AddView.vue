@@ -34,7 +34,14 @@
           </div>
           <div class="field">
             <label>备注</label>
-            <input v-model.trim="form.acremark" type="text" placeholder="备注" />
+            <div class="remark-row">
+              <input v-model.trim="form.acremark" type="text" placeholder="备注" class="remark-input" />
+              <span class="upload-wrap">
+                <button type="button" class="btn btn-upload" @click="triggerFileInput">上传图片</button>
+                <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.gif" multiple class="hidden-input" @change="onFileSelect" />
+              </span>
+            </div>
+            <p v-if="pendingFiles.length > 0" class="file-hint">已选 {{ pendingFiles.length }} 张图片，提交后将随记账一起上传</p>
           </div>
           <div class="field">
             <label>时间</label>
@@ -97,6 +104,8 @@ const form = ref({
   actime: '',
 })
 const listData = ref<Array<{ id: number; money: number; classid: number; class: string; typeid: number; type: string; funds: string; time: number; mark: string }>>([])
+const pendingFiles = ref<File[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
 const moneyDecimals = ref(2)
 const moneyPoint = ref('.')
 const moneyThousands = ref(',')
@@ -171,6 +180,41 @@ watch(activeTab, () => {
   if (ids.length > 0) form.value.acclassid = Number(ids[0])
 })
 
+function triggerFileInput () {
+  fileInput.value?.click()
+}
+
+function onFileSelect (e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files) {
+    pendingFiles.value = Array.from(input.files)
+  }
+  input.value = ''
+}
+
+function uploadPendingFiles (acid: number): Promise<void> {
+  if (pendingFiles.value.length === 0) return Promise.resolve()
+  const fd = new FormData()
+  fd.append('acid', String(acid))
+  pendingFiles.value.forEach((file) => fd.append('file[]', file))
+  return fetch(`${API}/account/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    body: fd,
+  })
+    .then(res => res.json())
+    .then((data: { uid: number; upload?: unknown[]; data?: string }) => {
+      pendingFiles.value = []
+      if (data.uid <= 0) return
+      if (!Array.isArray(data.upload) && data.data) {
+        console.warn('上传图片:', data.data)
+      }
+    })
+    .catch(() => {
+      pendingFiles.value = []
+    })
+}
+
 function onSubmit () {
   const uid = userStore.uid
   if (uid <= 0) return
@@ -194,18 +238,30 @@ function onSubmit () {
     body: body.toString(),
   })
     .then(res => res.json())
-    .then((data: { uid: number; data: { ret?: boolean; msg?: string } }) => {
+    .then((data: { uid: number; data: { ret?: boolean; msg?: string; acid?: number } }) => {
       if (data.uid <= 0) {
         alert(data.data && typeof data.data === 'string' ? data.data : '请先登录')
         return
       }
-      const d = data.data as { ret?: boolean; msg?: string }
+      const d = data.data as { ret?: boolean; msg?: string; acid?: number }
       if (d && d.ret) {
-        alert(d.msg || '添加成功')
-        form.value.money = 0
-        form.value.acremark = ''
-        form.value.actime = new Date().toISOString().slice(0, 10)
-        loadFind()
+        const acid = d.acid
+        if (acid != null && pendingFiles.value.length > 0) {
+          uploadPendingFiles(acid).then(() => {
+            alert(d.msg || '添加成功')
+            form.value.money = 0
+            form.value.acremark = ''
+            form.value.actime = new Date().toISOString().slice(0, 10)
+            loadFind()
+          })
+        } else {
+          alert(d.msg || '添加成功')
+          form.value.money = 0
+          form.value.acremark = ''
+          form.value.actime = new Date().toISOString().slice(0, 10)
+          pendingFiles.value = []
+          loadFind()
+        }
       } else {
         alert(d && d.msg ? d.msg : '添加失败')
       }
@@ -246,7 +302,13 @@ onMounted(() => {
 .field { margin-bottom: 0.75rem; }
 .field label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; }
 .field input, .field select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+.remark-row { display: flex; gap: 0.5rem; align-items: center; }
+.remark-input { flex: 1; }
+.upload-wrap { flex-shrink: 0; }
+.hidden-input { position: absolute; width: 0; height: 0; opacity: 0; }
+.file-hint { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
 .btn { display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; text-align: center; text-decoration: none; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #333; }
+.btn-upload { white-space: nowrap; }
 .btn-primary { background: #19a7f0; color: #fff; border-color: #19a7f0; width: 100%; margin-bottom: 0.5rem; }
 .btn-default { width: 100%; }
 

@@ -40,6 +40,7 @@ func (r *AccountRepo) SumByTimeAndTypeAndClass(uid int64, typ int, classID int64
 }
 
 // FindRow is the unified row shape for account or transfer list (id, money, classid, class, typeid, type, funds, time, mark).
+// Fid is set only for single-account get (get_id) for edit form.
 type FindRow struct {
 	ID      int64   `json:"id"`
 	Money   float64 `json:"money"`
@@ -48,6 +49,7 @@ type FindRow struct {
 	TypeID  int     `json:"typeid"`
 	Type    string  `json:"type"`
 	Funds   string  `json:"funds"`
+	Fid     int64   `json:"fid,omitempty"`
 	Time    int64   `json:"time"`
 	Mark    string  `json:"mark"`
 }
@@ -106,6 +108,75 @@ func (r *AccountRepo) Insert(jiid int64, acmoney float64, acclassid, actime int6
 // Delete deletes one account row by acid and jiid; returns rows affected.
 func (r *AccountRepo) Delete(acid, jiid int64) (int64, error) {
 	res, err := r.db.Exec(`DELETE FROM xxjz_account WHERE acid = ? AND jiid = ?`, acid, jiid)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// HasDefaultFunds reports whether the user has any account rows with fid = -1 (默认账户).
+func (r *AccountRepo) HasDefaultFunds(uid int64) (bool, error) {
+	var n int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM xxjz_account WHERE jiid = ? AND fid = -1`, uid).Scan(&n)
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// FundsStats returns income sum, expense sum, and record count for one fund (fid) and user.
+// over = in - out; caller may add transfer init for fid > 0 if needed.
+func (r *AccountRepo) FundsStats(uid, fid int64) (sumIn, sumOut float64, count int, err error) {
+	base := `SELECT COALESCE(SUM(acmoney),0) FROM xxjz_account WHERE jiid = ? AND fid = ? AND zhifu = ?`
+	err = r.db.QueryRow(base, uid, fid, 1).Scan(&sumIn)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	err = r.db.QueryRow(base, uid, fid, 2).Scan(&sumOut)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	err = r.db.QueryRow(`SELECT COUNT(*) FROM xxjz_account WHERE jiid = ? AND fid = ?`, uid, fid).Scan(&count)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	return sumIn, sumOut, count, nil
+}
+
+// ReassignFunds moves all account rows from oldFID to newFID for the user.
+func (r *AccountRepo) ReassignFunds(uid, oldFID, newFID int64) (int64, error) {
+	res, err := r.db.Exec(`UPDATE xxjz_account SET fid = ? WHERE jiid = ? AND fid = ?`, newFID, uid, oldFID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// GetByID returns one account row by acid and jiid with class and funds names, or nil if not found. Includes fid for edit form.
+func (r *AccountRepo) GetByID(acid, jiid int64) (*FindRow, error) {
+	query := `SELECT a.acid AS id, a.acmoney AS money, a.acclassid AS classid,
+		COALESCE(c.classname,'') AS class, a.zhifu AS typeid,
+		CASE a.zhifu WHEN 1 THEN '收入' WHEN 2 THEN '支出' ELSE '' END AS type,
+		COALESCE(f.fundsname,'') AS funds, a.fid, a.actime AS time, COALESCE(a.acremark,'') AS mark
+		FROM xxjz_account a
+		LEFT JOIN xxjz_account_class c ON c.classid = a.acclassid
+		LEFT JOIN xxjz_account_funds f ON f.fundsid = a.fid
+		WHERE a.acid = ? AND a.jiid = ?`
+	var row FindRow
+	err := r.db.QueryRow(query, acid, jiid).Scan(&row.ID, &row.Money, &row.ClassID, &row.Class, &row.TypeID, &row.Type, &row.Funds, &row.Fid, &row.Time, &row.Mark)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+// Update updates one account row by acid and jiid.
+func (r *AccountRepo) Update(acid, jiid int64, acmoney float64, acclassid, actime int64, acremark string, zhifu, fid int64) (int64, error) {
+	res, err := r.db.Exec(`UPDATE xxjz_account SET acmoney=?, acclassid=?, actime=?, acremark=?, zhifu=?, fid=? WHERE acid=? AND jiid=?`,
+		acmoney, acclassid, actime, acremark, zhifu, fid, acid, jiid)
 	if err != nil {
 		return 0, err
 	}
