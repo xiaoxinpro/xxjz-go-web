@@ -1,8 +1,8 @@
 <template>
   <div class="chart-page">
     <AppHeader />
-    <main class="main">
-      <div class="year-nav">
+    <main class="main page-main">
+      <div class="year-nav card">
         <router-link :to="`/chart`" class="year-link" @click.prevent="setYear(year - 1)">« {{ year - 1 }}年</router-link>
         <span class="year-current">{{ year }}年</span>
         <router-link :to="`/chart`" class="year-link" @click.prevent="setYear(year + 1)">{{ year + 1 }}年 »</router-link>
@@ -165,16 +165,46 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.chart-page { min-height: 100vh; padding-bottom: 1rem; }
-.main { padding: 1rem; max-width: 900px; margin: 0 auto; }
-.year-nav { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1rem; }
-.year-current { font-weight: 600; }
-.year-link { color: #19a7f0; text-decoration: none; }
+.chart-page {
+  min-height: 100vh;
+  padding-bottom: var(--space-xl);
+}
+.main {
+  max-width: 900px;
+}
+.year-nav.card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+.year-current { font-weight: 600; color: var(--color-text); }
+.year-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  min-height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+}
 .year-link:hover { text-decoration: underline; }
-.error, .empty { color: #c00; text-align: center; padding: 1rem; }
-.chart-box { height: 320px; width: 100%; }
-.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
-.chart-pie { height: 280px; }
-.back-link { margin-top: 1.5rem; }
-.back-link a { color: #19a7f0; text-decoration: none; }
+.error, .empty {
+  color: var(--color-danger);
+  text-align: center;
+  padding: var(--space-lg);
+}
+.chart-box { height: 320px; width: 100%; min-height: 240px; }
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-lg);
+  margin-top: var(--space-lg);
+}
+@media (min-width: 640px) {
+  .charts-row { grid-template-columns: 1fr 1fr; }
+}
+.chart-pie { height: 280px; min-height: 220px; }
+.back-link { margin-top: var(--space-xl); }
+.back-link a { color: var(--color-primary); text-decoration: none; }
+.back-link a:hover { text-decoration: underline; }
 </style>

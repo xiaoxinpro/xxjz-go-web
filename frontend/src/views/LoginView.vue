@@ -1,12 +1,18 @@
 <template>
   <div class="login-page">
-    <div class="login-card">
-      <h1>小歆记账</h1>
+    <div class="login-card card">
+      <h1 class="login-title"><Wallet class="title-icon" size="32" /> 小歆记账</h1>
       <form @submit.prevent="onSubmit" class="login-form">
-        <input v-model="username" type="text" placeholder="用户名" required />
-        <input v-model="password" type="password" placeholder="密码" required />
+        <div class="field">
+          <label>用户名</label>
+          <input v-model="username" type="text" placeholder="用户名" required />
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <input v-model="password" type="password" placeholder="密码" required />
+        </div>
         <p v-if="message" class="message" :class="{ error: !ok }">{{ message }}</p>
-        <button type="submit" :disabled="loading">登录</button>
+        <button type="submit" class="btn btn-primary" :disabled="loading">登录</button>
       </form>
     </div>
   </div>
@@ -16,6 +22,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { Wallet } from 'lucide-vue-next'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -44,44 +51,40 @@ async function onSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: var(--content-padding);
+  background: var(--color-bg);
 }
 .login-card {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   width: 100%;
   max-width: 360px;
 }
-.login-card h1 {
-  margin: 0 0 1.5rem;
+.login-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin: 0 0 var(--space-xl);
   font-size: 1.5rem;
   text-align: center;
-  color: #333;
+  color: var(--color-text);
 }
-.login-form input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
+.title-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.login-form .field {
+  margin-bottom: var(--space-lg);
 }
 .login-form button {
   width: 100%;
-  padding: 0.75rem;
-  background: #198754;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
+  margin-top: var(--space-sm);
 }
-.login-form button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+.message {
+  margin: var(--space-sm) 0;
+  font-size: 0.9rem;
+  color: var(--color-success);
 }
-.message { margin: 0.5rem 0; font-size: 0.9rem; color: #198754; }
-.message.error { color: #dc3545; }
+.message.error {
+  color: var(--color-danger);
+}
 </style>

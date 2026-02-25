@@ -1,12 +1,12 @@
 <template>
   <div class="edit-page">
-    <header class="header"><span>小歆记账</span></header>
-    <main class="main">
+    <AppHeader />
+    <main class="main page-main">
       <p v-if="loadError" class="error">{{ loadError }}</p>
       <template v-else-if="loaded">
+        <div class="form-card card">
+          <h2 class="card-title">编辑记账</h2>
         <form class="form" enctype="multipart/form-data" @submit.prevent="onSubmit">
-          <fieldset>
-            <legend>编辑</legend>
             <div class="field">
               <label>金额</label>
               <input v-model.number="form.money" type="number" step="0.01" min="0" required />
@@ -38,8 +38,8 @@
               <div class="remark-row">
                 <input v-model.trim="form.acremark" type="text" class="remark-input" />
                 <span class="upload-wrap">
-                  <button type="button" class="btn btn-upload" :disabled="uploading" @click="triggerFileInput">
-                    {{ uploading ? '上传中...' : '上传图片' }}
+                  <button type="button" class="btn btn-default btn-upload" :disabled="uploading" @click="triggerFileInput">
+                    <ImagePlus v-if="!uploading" size="18" /> {{ uploading ? '上传中...' : '上传图片' }}
                   </button>
                   <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.gif" multiple class="hidden-input" @change="onFileChange" />
                 </span>
@@ -49,7 +49,7 @@
               <p class="divider" />
               <ul class="image-gallery">
                 <li v-for="img in imageList" :key="img.id" class="image-item">
-                  <button type="button" class="image-delete" aria-label="删除图片" @click="deleteImage(img.id)">×</button>
+                  <button type="button" class="image-delete" aria-label="删除图片" @click="deleteImage(img.id)"><Trash2 size="14" /></button>
                   <a :href="img.url" target="_blank" rel="noopener" class="image-link">
                     <div class="zoom-image" :style="{ backgroundImage: 'url(' + img.url + ')' }" />
                     <span class="image-name">{{ img.name }}</span>
@@ -62,11 +62,11 @@
               <label>时间</label>
               <input v-model="form.actime" type="date" required />
             </div>
-            <p><button type="submit" class="btn btn-primary">修改</button></p>
-            <p><button type="button" class="btn btn-danger" @click="onDelete">删除</button></p>
-            <p><router-link to="/home" class="btn btn-default">返回</router-link></p>
-          </fieldset>
+            <button type="submit" class="btn btn-primary">修改</button>
+            <button type="button" class="btn btn-danger" @click="onDelete"><Trash2 size="18" /> 删除</button>
+            <router-link to="/home" class="btn btn-default">返回</router-link>
         </form>
+        </div>
       </template>
       <p v-else class="muted">加载中...</p>
     </main>
@@ -78,7 +78,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import AppHeader from '../components/AppHeader.vue'
 import NavBars from '../components/NavBars.vue'
+import { ImagePlus, Trash2 } from 'lucide-vue-next'
 
 const API = '/api'
 const route = useRoute()
@@ -331,33 +333,75 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.edit-page { min-height: 100vh; display: flex; flex-direction: column; }
-.header { padding: 1rem 1.5rem; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.main { flex: 1; padding: 1rem 1.5rem; padding-bottom: 4rem; }
-
-.form fieldset { border: none; padding: 0; }
-.form legend { font-weight: 600; margin-bottom: 0.75rem; }
-.field { margin-bottom: 0.75rem; }
-.field label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; }
-.field input, .field select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-.remark-row { display: flex; gap: 0.5rem; align-items: center; }
-.remark-input { flex: 1; }
+.edit-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.main {
+  flex: 1;
+  padding-bottom: 4.5rem;
+}
+.form-card .form button,
+.form-card .form .btn {
+  width: 100%;
+  margin-bottom: var(--space-sm);
+}
+.form-card .form .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+}
+.remark-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+.remark-input { flex: 1; min-width: 120px; }
 .upload-wrap { flex-shrink: 0; }
-.btn { display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; text-align: center; text-decoration: none; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #333; }
 .btn-upload { white-space: nowrap; }
-.btn-primary { background: #19a7f0; color: #fff; border-color: #19a7f0; width: 100%; margin-bottom: 0.5rem; }
-.btn-danger { background: #dc3545; color: #fff; border-color: #dc3545; width: 100%; margin-bottom: 0.5rem; }
-.btn-default { width: 100%; }
-.hidden-input { position: absolute; width: 0; height: 0; opacity: 0; }
+.hidden-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
 
-.divider { border: none; border-top: 1px dashed #ddd; margin: 1rem 0; }
-.image-section { margin: 0.5rem 0; }
-.image-gallery { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; }
+.divider { border: none; border-top: 1px dashed var(--color-border); margin: var(--space-lg) 0; }
+.image-section { margin: var(--space-md) 0; }
+.image-gallery {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--space-md);
+}
 .image-item { position: relative; }
-.image-delete { position: absolute; top: 4px; right: 4px; z-index: 1; width: 24px; height: 24px; border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0; }
-.image-link { display: block; text-decoration: none; color: #333; }
-.zoom-image { width: 100%; padding-bottom: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; border-radius: 4px; }
-.image-name, .image-time { display: block; font-size: 0.75rem; color: #666; margin-top: 0.25rem; }
-.error { color: #c00; }
-.muted { color: #999; }
+.image-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+}
+.image-link { display: block; text-decoration: none; color: var(--color-text); }
+.zoom-image {
+  width: 100%;
+  padding-bottom: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: var(--radius-md);
+}
+.image-name, .image-time { display: block; font-size: 0.75rem; color: var(--color-text-muted); margin-top: var(--space-xs); }
+.error { color: var(--color-danger); padding: var(--space-md); }
+.muted { color: var(--color-text-muted); padding: var(--space-md); }
 </style>

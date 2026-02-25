@@ -1,9 +1,9 @@
 <template>
   <div class="funds-page">
     <AppHeader />
-    <main class="main">
-      <div class="section">
-        <h2>新建资金账户</h2>
+    <main class="main page-main container">
+      <div class="section card">
+        <h2 class="card-title">新建资金账户</h2>
         <form class="form" @submit.prevent="onAdd">
           <div class="field">
             <label>账户名称</label>
@@ -18,8 +18,9 @@
         </form>
       </div>
 
-      <div class="section">
-        <h2>管理资金账户</h2>
+      <div class="section card">
+        <h2 class="card-title">管理资金账户</h2>
+        <div class="table-wrap">
         <table class="list-table">
           <thead>
             <tr>
@@ -45,6 +46,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
         <p v-if="fundsList.length === 0" class="muted">暂无资金账户</p>
       </div>
 
@@ -209,26 +211,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.funds-page { min-height: 100vh; padding-bottom: 1rem; }
-.main { padding: 1rem; max-width: 600px; margin: 0 auto; }
-.section { margin-bottom: 1.5rem; }
-.section h2 { font-size: 1rem; margin-bottom: 0.5rem; }
-.form .field { margin-bottom: 0.5rem; }
-.form .field label { display: inline-block; min-width: 5rem; }
-.list-table { width: 100%; border-collapse: collapse; }
-.list-table th, .list-table td { border: 1px solid #ddd; padding: 0.4rem; text-align: left; }
-.list-table .money-in { color: #0a0; }
-.list-table .money-out { color: #c00; }
-.list-table .money-balance { color: #19a7f0; }
-.list-table td:nth-child(2), .list-table td:nth-child(3), .list-table td:nth-child(4) { text-align: right; }
+.funds-page { min-height: 100vh; padding-bottom: var(--space-xl); }
+.section { margin-bottom: var(--space-xl); }
+.section .card-title { margin-bottom: var(--space-md); }
+.form .field label { display: block; }
+.table-wrap { margin-bottom: var(--space-md); }
+.list-table td:nth-child(2), .list-table td:nth-child(3), .list-table td:nth-child(4),
 .list-table td:nth-child(5) { text-align: right; }
-.btn-link { background: none; border: none; color: #19a7f0; cursor: pointer; padding: 0 0.25rem; }
-.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: #fff; padding: 1rem; border-radius: 8px; min-width: 280px; }
-.modal h3 { margin-top: 0; }
-.modal .field { margin-bottom: 0.5rem; }
-.modal .field label { display: block; }
-.back-link { margin-top: 1rem; }
-.back-link a { color: #19a7f0; text-decoration: none; }
-.btn { margin-right: 0.5rem; margin-top: 0.5rem; }
+.btn-link { margin-right: var(--space-sm); }
+.modal .btn { margin-right: var(--space-sm); margin-top: var(--space-sm); }
+.back-link { margin-top: var(--space-lg); }
+.back-link a { color: var(--color-primary); text-decoration: none; }
 </style>

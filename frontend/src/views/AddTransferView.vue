@@ -1,12 +1,10 @@
 <template>
   <div class="transfer-page">
-    <header class="header">
-      <span>小歆记账</span>
-    </header>
-    <main class="main">
-      <form class="form" @submit.prevent="onSubmit">
-        <fieldset>
-          <legend>账户转账</legend>
+    <AppHeader />
+    <main class="main page-main">
+      <div class="form-card card">
+        <h2 class="card-title"><ArrowRightLeft size="22" class="title-icon" /> 账户转账</h2>
+        <form class="form" @submit.prevent="onSubmit">
           <div class="field">
             <label>转账金额</label>
             <input v-model.number="form.money" type="number" step="0.01" min="0" placeholder="输入转账金额" required />
@@ -33,10 +31,10 @@
             <label>时间</label>
             <input v-model="form.time" type="date" required />
           </div>
-          <p><button type="submit" class="btn btn-primary">转账</button></p>
-          <p><router-link to="/add" class="btn btn-default">返回</router-link></p>
-        </fieldset>
-      </form>
+          <button type="submit" class="btn btn-primary">转账</button>
+          <router-link to="/add" class="btn btn-default">返回</router-link>
+        </form>
+      </div>
     </main>
     <NavBars current="add" />
   </div>
@@ -45,7 +43,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
+import AppHeader from '../components/AppHeader.vue'
 import NavBars from '../components/NavBars.vue'
+import { ArrowRightLeft } from 'lucide-vue-next'
 
 const API = '/api'
 
@@ -57,7 +57,6 @@ function base64Json (obj: Record<string, unknown>): string {
   return btoa(binary)
 }
 
-const userStore = useUserStore()
 interface Fund { fundsid: number; fundsname: string }
 const funds = ref<Fund[]>([])
 const form = ref({
@@ -125,16 +124,26 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.transfer-page { min-height: 100vh; display: flex; flex-direction: column; }
-.header { padding: 1rem 1.5rem; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.main { flex: 1; padding: 1rem 1.5rem; padding-bottom: 4rem; }
-
-.form fieldset { border: none; padding: 0; }
-.form legend { font-weight: 600; margin-bottom: 0.75rem; }
-.field { margin-bottom: 0.75rem; }
-.field label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; }
-.field input, .field select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-.btn { display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; text-align: center; text-decoration: none; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #333; }
-.btn-primary { background: #19a7f0; color: #fff; border-color: #19a7f0; width: 100%; margin-bottom: 0.5rem; }
-.btn-default { width: 100%; }
+.transfer-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.main {
+  flex: 1;
+  padding-bottom: 4.5rem;
+}
+.form-card .card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.title-icon {
+  color: var(--color-primary);
+}
+.form button,
+.form .btn {
+  width: 100%;
+  margin-bottom: var(--space-sm);
+}
 </style>

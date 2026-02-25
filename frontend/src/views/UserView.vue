@@ -1,13 +1,13 @@
 <template>
   <div class="user-page">
     <AppHeader />
-    <main class="main">
-      <div class="tabs">
+    <main class="main page-main container">
+      <div class="tabs card">
         <button type="button" class="tab" :class="{ active: activeTab === 'account' }" @click="activeTab = 'account'">账号设置</button>
         <button type="button" class="tab" :class="{ active: activeTab === 'password' }" @click="activeTab = 'password'">修改密码</button>
       </div>
 
-      <div v-if="activeTab === 'account'" class="panel">
+      <div v-if="activeTab === 'account'" class="panel card">
         <p v-if="isDemo" class="demo-tip">Demo 账号无法修改账号信息。</p>
         <form class="form" @submit.prevent="onUpdateUsername">
           <div class="field">
@@ -26,7 +26,7 @@
         </form>
       </div>
 
-      <div v-if="activeTab === 'password'" class="panel">
+      <div v-if="activeTab === 'password'" class="panel card">
         <p v-if="isDemo" class="demo-tip">Demo 账号无法修改密码。</p>
         <form class="form" @submit.prevent="onUpdatePassword">
           <div class="field">
@@ -140,17 +140,23 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.user-page { min-height: 100vh; padding-bottom: 1rem; }
-.main { padding: 1rem; max-width: 400px; margin: 0 auto; }
-.tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-.tab { padding: 0.5rem 1rem; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 4px; }
-.tab.active { background: #19a7f0; color: #fff; border-color: #19a7f0; }
-.panel { margin-bottom: 1rem; }
-.demo-tip { color: #c00; margin-bottom: 0.5rem; font-size: 0.9rem; }
-.form .field { margin-bottom: 0.5rem; }
-.form .field label { display: block; margin-bottom: 0.2rem; }
-.form .field input { width: 100%; max-width: 280px; }
-.back-link { margin-top: 1rem; }
-.back-link a { color: #19a7f0; text-decoration: none; }
-.btn { margin-top: 0.5rem; }
+.user-page { min-height: 100vh; padding-bottom: var(--space-xl); }
+.tabs.card { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+.tab {
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  min-height: var(--touch-min);
+  font-size: 0.95rem;
+}
+.tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.panel { margin-bottom: var(--space-lg); }
+.demo-tip { color: var(--color-danger); margin-bottom: var(--space-md); font-size: 0.9rem; }
+.form .field label { display: block; }
+.form .field input { width: 100%; max-width: 320px; }
+.back-link { margin-top: var(--space-lg); }
+.back-link a { color: var(--color-primary); text-decoration: none; }
+.btn { margin-top: var(--space-sm); }
 </style>

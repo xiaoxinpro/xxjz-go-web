@@ -1,29 +1,41 @@
 <template>
   <div class="init-page">
-    <div class="init-card">
-      <h1>小歆记账 · 初始化</h1>
+    <div class="init-card card">
+      <h1 class="init-title">小歆记账 · 初始化</h1>
       <p class="intro">首次使用请创建管理员账号，或导入旧数据库。</p>
 
-      <section class="section">
-        <h2>创建管理员账号</h2>
+      <section class="section card">
+        <h2 class="card-title"><UserPlus class="section-icon" size="20" /> 创建管理员账号</h2>
         <form @submit.prevent="onSetup" class="form">
-          <input v-model="setup.username" type="text" placeholder="用户名" required />
-          <input v-model="setup.password" type="password" placeholder="密码" required />
-          <input v-model="setup.email" type="email" placeholder="邮箱" required />
+          <div class="field">
+            <label>用户名</label>
+            <input v-model="setup.username" type="text" placeholder="用户名" required />
+          </div>
+          <div class="field">
+            <label>密码</label>
+            <input v-model="setup.password" type="password" placeholder="密码" required />
+          </div>
+          <div class="field">
+            <label>邮箱</label>
+            <input v-model="setup.email" type="email" placeholder="邮箱" required />
+          </div>
           <p v-if="setup.message" class="message" :class="{ error: !setup.ok }">{{ setup.message }}</p>
-          <button type="submit" :disabled="setup.loading">创建并进入</button>
+          <button type="submit" class="btn btn-primary" :disabled="setup.loading">创建并进入</button>
         </form>
       </section>
 
       <div class="divider">或</div>
 
-      <section class="section">
-        <h2>导入旧数据库</h2>
+      <section class="section card">
+        <h2 class="card-title"><Upload class="section-icon" size="20" /> 导入旧数据库</h2>
         <p class="hint">上传从旧版（ThinkPHP/MySQL）导出的 xxjz.sql 文件，将自动转换为当前数据库。</p>
         <form @submit.prevent="onImport" class="form">
-          <input ref="fileInput" type="file" accept=".sql" @change="onFileChange" />
+          <div class="field">
+            <label>选择 .sql 文件</label>
+            <input ref="fileInput" type="file" accept=".sql" @change="onFileChange" />
+          </div>
           <p v-if="importForm.message" class="message" :class="{ error: !importForm.ok }">{{ importForm.message }}</p>
-          <button type="submit" :disabled="importForm.loading || !importForm.file">导入</button>
+          <button type="submit" class="btn btn-primary" :disabled="importForm.loading || !importForm.file">导入</button>
         </form>
       </section>
     </div>
@@ -33,6 +45,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { UserPlus, Upload } from 'lucide-vue-next'
 
 const API = '/api'
 const router = useRouter()
@@ -126,76 +139,63 @@ async function onImport() {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  background: #f5f5f5;
+  padding: var(--content-padding);
+  background: var(--color-bg);
 }
 .init-card {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   width: 100%;
   max-width: 420px;
 }
-.init-card h1 {
+.init-title {
   margin: 0 0 0.5rem;
   font-size: 1.35rem;
   text-align: center;
-  color: #333;
+  color: var(--color-text);
 }
 .intro {
-  margin: 0 0 1.5rem;
+  margin: 0 0 var(--space-xl);
   font-size: 0.9rem;
-  color: #666;
+  color: var(--color-text-muted);
   text-align: center;
 }
 .section {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-xl);
 }
-.section h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-  color: #333;
+.section .card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.section-icon {
+  flex-shrink: 0;
+  color: var(--color-primary);
 }
 .hint {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-md);
   font-size: 0.85rem;
-  color: #666;
+  color: var(--color-text-muted);
 }
-.form input[type="text"],
-.form input[type="password"],
-.form input[type="email"] {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
-}
-.form input[type="file"] {
-  margin-bottom: 0.75rem;
+.form .field input[type="file"] {
   font-size: 0.9rem;
+  min-height: auto;
+  padding: var(--space-sm);
 }
 .form button {
   width: 100%;
-  padding: 0.75rem;
-  background: #198754;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
-}
-.form button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+  margin-top: var(--space-sm);
 }
 .divider {
   text-align: center;
-  color: #999;
+  color: var(--color-text-light);
   font-size: 0.9rem;
-  margin: 1rem 0;
+  margin: var(--space-lg) 0;
 }
-.message { margin: 0.5rem 0; font-size: 0.9rem; color: #198754; }
-.message.error { color: #dc3545; }
+.message {
+  margin: var(--space-sm) 0;
+  font-size: 0.9rem;
+  color: var(--color-success);
+}
+.message.error {
+  color: var(--color-danger);
+}
 </style>
