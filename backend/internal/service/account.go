@@ -59,6 +59,51 @@ func (s *AccountService) AddAccount(uid int64, acmoney float64, acclassid, actim
 	return true, "添加成功", acid
 }
 
+// GetAccountByID returns one account row for edit; nil if not found or not owned.
+func (s *AccountService) GetAccountByID(uid, acid int64) (*repository.FindRow, error) {
+	return s.accountRepo.GetByID(acid, uid)
+}
+
+// EditAccount updates one account. Returns ok, msg.
+func (s *AccountService) EditAccount(uid, acid int64, acmoney float64, acclassid, actime int64, acremark string, zhifu, fid int64) (ok bool, msg string) {
+	if acmoney <= 0 {
+		return false, "金额必须大于0"
+	}
+	if s.cfg.Money.MaxValue > 0 && acmoney > s.cfg.Money.MaxValue {
+		return false, "金额超出允许范围"
+	}
+	if zhifu != 1 && zhifu != 2 {
+		return false, "收支类型无效"
+	}
+	if len(acremark) > s.cfg.Limits.MaxMarkValue {
+		return false, "备注过长"
+	}
+	class, err := s.classRepo.GetByID(acclassid, uid)
+	if err != nil || class == nil {
+		return false, "分类不存在或无权使用"
+	}
+	if int64(class.ClassType) != zhifu {
+		return false, "分类与收支类型不匹配"
+	}
+	if fid != 0 && fid != -1 {
+		f, _ := s.fundsRepo.GetByID(fid, uid)
+		if f == nil {
+			return false, "资金账户不存在或无权使用"
+		}
+	}
+	if fid == 0 {
+		fid = -1
+	}
+	n, err := s.accountRepo.Update(acid, uid, acmoney, acclassid, actime, acremark, zhifu, fid)
+	if err != nil {
+		return false, "更新失败: " + err.Error()
+	}
+	if n == 0 {
+		return false, "记录不存在或无权修改"
+	}
+	return true, "修改成功"
+}
+
 // DeleteAccount deletes one account by acid and uid. Returns ok, msg.
 func (s *AccountService) DeleteAccount(uid, acid int64) (ok bool, msg string) {
 	n, err := s.accountRepo.Delete(acid, uid)

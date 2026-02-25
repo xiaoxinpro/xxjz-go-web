@@ -9,7 +9,8 @@
             <label>账户名称</label>
             <input v-model.trim="addForm.fundsname" type="text" placeholder="账户名称" required />
           </div>
-          <div class="field">
+          <!-- 初始金额：后端已支持，暂时隐藏避免误解，后续可恢复展示 -->
+          <div class="field" style="display: none;">
             <label>初始金额</label>
             <input v-model.number="addForm.fundsmoney" type="number" step="0.01" placeholder="0" />
           </div>
@@ -21,11 +22,22 @@
         <h2>管理资金账户</h2>
         <table class="list-table">
           <thead>
-            <tr><th>账户名称</th><th>操作</th></tr>
+            <tr>
+              <th>账户名称</th>
+              <th>收入金额</th>
+              <th>支出金额</th>
+              <th>剩余金额</th>
+              <th>记录数</th>
+              <th>操作</th>
+            </tr>
           </thead>
           <tbody>
             <tr v-for="f in fundsList" :key="f.fundsid">
               <td>{{ f.fundsname }}</td>
+              <td class="money-in">{{ formatMoney(moneyOf(f).in) }}</td>
+              <td class="money-out">{{ formatMoney(moneyOf(f).out) }}</td>
+              <td class="money-balance">{{ formatMoney(moneyOf(f).over) }}</td>
+              <td>{{ moneyOf(f).count }}</td>
               <td>
                 <button type="button" class="btn-link" @click="startEdit(f)">编辑</button>
                 <button type="button" class="btn-link" @click="startDelete(f)">删除</button>
@@ -88,8 +100,29 @@ function base64Json(obj: Record<string, unknown>): string {
   return btoa(binary)
 }
 
-interface FundRow { fundsid: number; fundsname: string; uid?: number; sort?: number }
+interface MoneyStats { in: number; out: number; over: number; count: number }
+interface FundRow {
+  fundsid: number
+  fundsname: string
+  uid?: number
+  sort?: number
+  money?: MoneyStats
+}
 const fundsList = ref<FundRow[]>([])
+const moneyDecimals = ref(2)
+
+function moneyOf(f: FundRow): MoneyStats {
+  const m = f.money
+  if (m && typeof m.in === 'number' && typeof m.out === 'number' && typeof m.over === 'number' && typeof m.count === 'number') {
+    return m
+  }
+  return { in: 0, out: 0, over: 0, count: 0 }
+}
+
+function formatMoney(v: number | undefined): string {
+  if (v == null || Number.isNaN(v)) return '0'
+  return Number(v).toFixed(moneyDecimals.value)
+}
 const addForm = ref({ fundsname: '', fundsmoney: 0 })
 const editing = ref<FundRow | null>(null)
 const editForm = ref({ fundsname: '' })
@@ -161,7 +194,18 @@ async function onDelete() {
   }
 }
 
-onMounted(() => loadFunds())
+onMounted(() => {
+  loadFunds()
+  fetch(`${API}/version`, { credentials: 'include' })
+    .then(res => res.json())
+    .then((data: { account?: Record<string, unknown> }) => {
+      const acc = data.account as Record<string, unknown> | undefined
+      if (acc && typeof acc.MONEY_FORMAT_DECIMALS === 'number') {
+        moneyDecimals.value = acc.MONEY_FORMAT_DECIMALS
+      }
+    })
+    .catch(() => {})
+})
 </script>
 
 <style scoped>
@@ -173,6 +217,11 @@ onMounted(() => loadFunds())
 .form .field label { display: inline-block; min-width: 5rem; }
 .list-table { width: 100%; border-collapse: collapse; }
 .list-table th, .list-table td { border: 1px solid #ddd; padding: 0.4rem; text-align: left; }
+.list-table .money-in { color: #0a0; }
+.list-table .money-out { color: #c00; }
+.list-table .money-balance { color: #19a7f0; }
+.list-table td:nth-child(2), .list-table td:nth-child(3), .list-table td:nth-child(4) { text-align: right; }
+.list-table td:nth-child(5) { text-align: right; }
 .btn-link { background: none; border: none; color: #19a7f0; cursor: pointer; padding: 0 0.25rem; }
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
 .modal { background: #fff; padding: 1rem; border-radius: 8px; min-width: 280px; }

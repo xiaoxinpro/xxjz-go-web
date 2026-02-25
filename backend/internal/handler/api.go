@@ -5,8 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -18,6 +22,9 @@ import (
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/session"
 )
 
+// UploadDir is the local directory for uploaded images (relative to cwd).
+const UploadDir = "uploads"
+
 type APIHandler struct {
 	cfg         *config.Config
 	userSvc     *service.UserService
@@ -28,11 +35,12 @@ type APIHandler struct {
 	transferSvc *service.TransferService
 	findSvc     *service.FindService
 	chartSvc    *service.ChartService
+	imageSvc    *service.ImageService
 	db          *sql.DB
 }
 
-func NewAPIHandler(cfg *config.Config, userSvc *service.UserService, statSvc *service.StatisticService, fundsSvc *service.FundsService, classSvc *service.ClassService, accountSvc *service.AccountService, transferSvc *service.TransferService, findSvc *service.FindService, chartSvc *service.ChartService, db *sql.DB) *APIHandler {
-	return &APIHandler{cfg: cfg, userSvc: userSvc, statSvc: statSvc, fundsSvc: fundsSvc, classSvc: classSvc, accountSvc: accountSvc, transferSvc: transferSvc, findSvc: findSvc, chartSvc: chartSvc, db: db}
+func NewAPIHandler(cfg *config.Config, userSvc *service.UserService, statSvc *service.StatisticService, fundsSvc *service.FundsService, classSvc *service.ClassService, accountSvc *service.AccountService, transferSvc *service.TransferService, findSvc *service.FindService, chartSvc *service.ChartService, imageSvc *service.ImageService, db *sql.DB) *APIHandler {
+	return &APIHandler{cfg: cfg, userSvc: userSvc, statSvc: statSvc, fundsSvc: fundsSvc, classSvc: classSvc, accountSvc: accountSvc, transferSvc: transferSvc, findSvc: findSvc, chartSvc: chartSvc, imageSvc: imageSvc, db: db}
 }
 
 // parseFindFilter extracts find filters from data; returns nil if no filters set.
@@ -516,7 +524,40 @@ func (h *APIHandler) Account(c *gin.Context) {
 	case "get_year", "get_all_year":
 		out["data"] = []interface{}{}
 	case "get_id":
-		out["data"] = map[string]interface{}{}
+		var acid, jiid int64
+		switch v := data["acid"].(type) {
+		case float64:
+			acid = int64(v)
+		case string:
+			acid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		switch v := data["jiid"].(type) {
+		case float64:
+			jiid = int64(v)
+		case string:
+			jiid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		if jiid != uid {
+			out["uid"] = 0
+			out["data"] = "用户验证未通过，请重新登录！"
+			c.JSON(http.StatusOK, out)
+			return
+		}
+		row, err := h.accountSvc.GetAccountByID(uid, acid)
+		if err != nil || row == nil {
+			out["data"] = map[string]interface{}{}
+			break
+		}
+		// Compatible with old NumTimeToStrTime: time as "Y-m-d" string
+		timeStr := ""
+		if row.Time != 0 {
+			t := time.Unix(row.Time, 0).In(time.Local)
+			timeStr = t.Format("2006-01-02")
+		}
+		out["data"] = map[string]interface{}{
+			"id": row.ID, "money": row.Money, "classid": row.ClassID, "class": row.Class,
+			"typeid": row.TypeID, "type": row.Type, "funds": row.Funds, "fid": row.Fid, "time": timeStr, "mark": row.Mark,
+		}
 	case "add":
 		acmoney, _ := data["acmoney"].(float64)
 		acclassid, _ := data["acclassid"].(float64)
@@ -550,7 +591,40 @@ func (h *APIHandler) Account(c *gin.Context) {
 			out["data"] = map[string]interface{}{"ret": false, "msg": msg}
 		}
 	case "edit":
-		out["data"] = map[string]interface{}{"ret": false, "msg": "功能开发中"}
+		var acid int64
+		switch v := data["acid"].(type) {
+		case float64:
+			acid = int64(v)
+		case string:
+			acid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		acmoney, _ := data["acmoney"].(float64)
+		acclassid, _ := data["acclassid"].(float64)
+		acremark, _ := data["acremark"].(string)
+		zhifu, _ := data["zhifu"].(float64)
+		fidVal := data["fid"]
+		var fid int64
+		switch v := fidVal.(type) {
+		case float64:
+			fid = int64(v)
+		case string:
+			fid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		var actime int64
+		if t, ok := data["actime"].(float64); ok && t > 0 {
+			actime = int64(t)
+		} else if s, ok := data["actime"].(string); ok && s != "" {
+			parsed, err := time.ParseInLocation("2006-01-02", s, time.Local)
+			if err == nil {
+				actime = parsed.Unix()
+			}
+		}
+		ok, msg := h.accountSvc.EditAccount(uid, acid, acmoney, int64(acclassid), actime, acremark, int64(zhifu), fid)
+		if ok {
+			out["data"] = map[string]interface{}{"ret": true, "msg": msg}
+		} else {
+			out["data"] = map[string]interface{}{"ret": false, "msg": msg}
+		}
 	case "del":
 		var acid int64
 		switch v := data["acid"].(type) {
@@ -560,6 +634,14 @@ func (h *APIHandler) Account(c *gin.Context) {
 			acid, _ = strconv.ParseInt(v, 10, 64)
 		}
 		ok, msg := h.accountSvc.DeleteAccount(uid, acid)
+		if ok && h.imageSvc != nil {
+			// Delete image files and DB records for this account
+			imgs, _ := h.imageSvc.ListByAcidForDelete(uid, acid)
+			for _, img := range imgs {
+				_ = os.Remove(filepath.Join(UploadDir, img.Savepath, img.Savename))
+			}
+			_, _ = h.imageSvc.DeleteAllByAcid(uid, acid)
+		}
 		if ok {
 			out["data"] = map[string]interface{}{"ret": true, "msg": msg}
 		} else {
@@ -567,10 +649,175 @@ func (h *APIHandler) Account(c *gin.Context) {
 		}
 	case "find":
 		out["data"] = map[string]interface{}{"ret": true, "msg": map[string]interface{}{"data": []interface{}{}, "page": 1, "pagemax": 1, "count": 0}}
-	case "get_image", "set_image", "del_image":
-		out["data"] = map[string]interface{}{"ret": false, "msg": "功能开发中"}
+	case "get_image":
+		if h.imageSvc == nil {
+			out["data"] = map[string]interface{}{"ret": false, "msg": "功能开发中"}
+			break
+		}
+		var acid int64
+		switch v := data["acid"].(type) {
+		case float64:
+			acid = int64(v)
+		case string:
+			acid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		list, err := h.imageSvc.GetImages(uid, acid)
+		if err != nil {
+			out["data"] = map[string]interface{}{"ret": false, "msg": err.Error()}
+			break
+		}
+		msgList := make([]map[string]interface{}, 0, len(list))
+		for _, it := range list {
+			msgList = append(msgList, map[string]interface{}{"id": it.ID, "name": it.Name, "url": it.URL, "time": it.Time})
+		}
+		out["data"] = map[string]interface{}{"ret": true, "msg": msgList}
+	case "set_image":
+		if h.imageSvc == nil {
+			out["data"] = map[string]interface{}{"ret": false, "msg": "功能开发中"}
+			break
+		}
+		var idVal, acid int64
+		switch v := data["id"].(type) {
+		case float64:
+			idVal = int64(v)
+		case string:
+			idVal, _ = strconv.ParseInt(v, 10, 64)
+		}
+		switch v := data["acid"].(type) {
+		case float64:
+			acid = int64(v)
+		case string:
+			acid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		ok, err := h.imageSvc.SetImageAcid(uid, idVal, acid)
+		if err != nil {
+			out["data"] = map[string]interface{}{"ret": false, "msg": err.Error()}
+			break
+		}
+		if ok {
+			out["data"] = map[string]interface{}{"ret": true, "msg": "OK"}
+		} else {
+			out["data"] = map[string]interface{}{"ret": false, "msg": "目标账单无法添加图片。"}
+		}
+	case "del_image":
+		if h.imageSvc == nil {
+			out["data"] = map[string]interface{}{"ret": false, "msg": "功能开发中"}
+			break
+		}
+		var acid, idVal int64
+		switch v := data["acid"].(type) {
+		case float64:
+			acid = int64(v)
+		case string:
+			acid, _ = strconv.ParseInt(v, 10, 64)
+		}
+		switch v := data["id"].(type) {
+		case float64:
+			idVal = int64(v)
+		case string:
+			idVal, _ = strconv.ParseInt(v, 10, 64)
+		}
+		savepath, savename, err := h.imageSvc.GetImagePath(uid, idVal)
+		if err == nil {
+			_ = os.Remove(filepath.Join(UploadDir, savepath, savename))
+		}
+		n, err := h.imageSvc.DeleteImage(uid, acid, idVal)
+		if err != nil {
+			out["data"] = map[string]interface{}{"ret": false, "msg": err.Error()}
+			break
+		}
+		if n > 0 {
+			out["data"] = map[string]interface{}{"ret": true, "msg": n}
+		} else {
+			out["data"] = map[string]interface{}{"ret": false, "msg": "删除图片失败，图片数据不存在。"}
+		}
 	default:
 		out["data"] = map[string]interface{}{}
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// AccountUpload handles POST multipart/form-data: acid (optional), file or file[].
+func (h *APIHandler) AccountUpload(c *gin.Context) {
+	sess := sessions.Default(c)
+	uid := session.GetUID(sess)
+	out := gin.H{}
+	if uid <= 0 {
+		out["uid"] = 0
+		out["data"] = "用户未登录，请重新登录！"
+		c.JSON(http.StatusOK, out)
+		return
+	}
+	out["uid"] = uid
+	if h.imageSvc == nil {
+		out["data"] = "上传功能未开放"
+		c.JSON(http.StatusOK, out)
+		return
+	}
+	var acid int64
+	if v := c.PostForm("acid"); v != "" {
+		acid, _ = strconv.ParseInt(v, 10, 64)
+	}
+	if err := c.Request.ParseMultipartForm(int64(h.cfg.Image.MaxSize) * 2); err != nil {
+		out["data"] = "请求解析失败"
+		c.JSON(http.StatusOK, out)
+		return
+	}
+	// Collect files: form may use "file", "file[]", or "edit_photo[]"
+	var files []*multipart.FileHeader
+	for _, key := range []string{"file", "file[]", "edit_photo[]"} {
+		if fh := c.Request.MultipartForm.File[key]; len(fh) > 0 {
+			files = append(files, fh...)
+		}
+	}
+	if len(files) == 0 {
+		out["data"] = "未选择文件"
+		c.JSON(http.StatusOK, out)
+		return
+	}
+	count, _ := h.imageSvc.CountByAcid(uid, acid)
+	if count+len(files) > h.cfg.Image.MaxCount {
+		out["data"] = "每个账单图片数量不能超过" + strconv.Itoa(h.cfg.Image.MaxCount) + "个"
+		c.JSON(http.StatusOK, out)
+		return
+	}
+	var uploaded []map[string]interface{}
+	for _, fh := range files {
+		if int64(fh.Size) > int64(h.cfg.Image.MaxSize) {
+			out["upload"] = uploaded
+			out["data"] = "单次上传文件体积不能超过限制，请压缩后重新上传。"
+			c.JSON(http.StatusOK, out)
+			return
+		}
+		ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(fh.Filename)), ".")
+		if ext == "" {
+			ext = "jpg"
+		}
+		if !h.imageSvc.AllowedExt(ext) {
+			continue
+		}
+		f, err := fh.Open()
+		if err != nil {
+			continue
+		}
+		item, err := h.imageSvc.AddImageFromFile(uid, acid, fh.Filename, fh.Size, ext, f)
+		f.Close()
+		if err != nil {
+			out["upload"] = uploaded
+			out["data"] = "上传失败: " + err.Error()
+			c.JSON(http.StatusOK, out)
+			return
+		}
+		if item != nil {
+			uploaded = append(uploaded, map[string]interface{}{"id": item.ID, "name": item.Name, "url": item.URL, "time": item.Time})
+		}
+	}
+	if len(uploaded) == 0 {
+		out["upload"] = false
+		out["data"] = "上传失败，文件不符合服务器要求，请检查后再试。"
+	} else {
+		out["upload"] = uploaded
+		out["data"] = "上传成功！"
 	}
 	c.JSON(http.StatusOK, out)
 }

@@ -53,12 +53,14 @@ func main() {
 	userSvc := service.NewUserService(cfg, userRepo)
 	statSvc := service.NewStatisticService(accountRepo)
 	findSvc := service.NewFindService(accountRepo, transferRepo, cfg.User.PageSize)
-	fundsSvc := service.NewFundsService(cfg, fundsRepo)
+	fundsSvc := service.NewFundsService(cfg, fundsRepo, accountRepo, transferRepo)
 	classSvc := service.NewClassService(cfg, classRepo)
 	accountSvc := service.NewAccountService(cfg, accountRepo, classRepo, fundsRepo)
 	transferSvc := service.NewTransferService(cfg, transferRepo, fundsRepo)
 	chartSvc := service.NewChartService(accountRepo, classRepo)
-	apiHandler := handler.NewAPIHandler(cfg, userSvc, statSvc, fundsSvc, classSvc, accountSvc, transferSvc, findSvc, chartSvc, database)
+	imageRepo := repository.NewImageRepo(database)
+	imageSvc := service.NewImageService(cfg, imageRepo, handler.UploadDir)
+	apiHandler := handler.NewAPIHandler(cfg, userSvc, statSvc, fundsSvc, classSvc, accountSvc, transferSvc, findSvc, chartSvc, imageSvc, database)
 
 	secret := os.Getenv("SESSION_SECRET")
 	if secret == "" {
@@ -97,6 +99,7 @@ func main() {
 		api.POST("/aclass", apiHandler.Aclass)
 		api.GET("/account", apiHandler.Account)
 		api.POST("/account", apiHandler.Account)
+		api.POST("/account/upload", apiHandler.AccountUpload)
 		api.GET("/transfer", apiHandler.Transfer)
 		api.POST("/transfer", apiHandler.Transfer)
 		api.GET("/find", apiHandler.Find)
@@ -122,6 +125,7 @@ func main() {
 		compat.POST("/aclass", apiHandler.Aclass)
 		compat.GET("/account", apiHandler.Account)
 		compat.POST("/account", apiHandler.Account)
+		compat.POST("/account/upload", apiHandler.AccountUpload)
 		compat.GET("/transfer", apiHandler.Transfer)
 		compat.POST("/transfer", apiHandler.Transfer)
 		compat.GET("/find", apiHandler.Find)
@@ -133,6 +137,12 @@ func main() {
 	}
 	api.POST("/admin/import", apiHandler.AdminImport)
 	compat.POST("/admin/import", apiHandler.AdminImport)
+
+	// Uploaded images static files (ensure dir exists for uploads)
+	if err := os.MkdirAll(handler.UploadDir, 0755); err != nil {
+		log.Printf("mkdir %s: %v", handler.UploadDir, err)
+	}
+	r.Static("/uploads", handler.UploadDir)
 
 	// SPA static files (when ./static exists, e.g. in Docker)
 	if info, err := os.Stat("static"); err == nil && info.IsDir() {
