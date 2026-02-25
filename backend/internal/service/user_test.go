@@ -20,14 +20,14 @@ func TestUserLogin_Invalid(t *testing.T) {
 
 func TestIsDemoUser(t *testing.T) {
 	cfg := &config.Config{User: config.UserConfig{Demo: config.DemoAccount{Username: "demo", Password: "x"}}}
-	svc := NewUserService(cfg, nil)
+	svc := NewUserService(cfg, nil, nil)
 	assert.True(t, svc.IsDemoUser("demo"))
 	assert.False(t, svc.IsDemoUser("admin"))
 }
 
 func TestRegistShell_Validation(t *testing.T) {
 	cfg := &config.Config{}
-	svc := NewUserService(cfg, nil)
+	svc := NewUserService(cfg, nil, nil)
 	ok, msg, _ := svc.RegistShell("a", "123", "bad-email")
 	assert.False(t, ok)
 	assert.NotEmpty(t, msg)

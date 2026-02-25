@@ -72,14 +72,17 @@
         </table>
       </div>
 
-      <div class="pagination" v-if="pagemax > 1">
-        <button type="button" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-        <span class="page-select">
-          <select :value="page" @change="goPage(Number(($event.target as HTMLSelectElement).value))">
-            <option v-for="p in pageRange" :key="p" :value="p">{{ p }}</option>
-          </select>
-        </span>
-        <button type="button" :disabled="page >= pagemax" @click="goPage(page + 1)">下一页</button>
+      <div class="pagination-wrap" v-if="pagemax > 1">
+        <div class="pagination">
+          <button type="button" class="pagination-btn" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+          <span class="pagination-info">第 {{ page }} / {{ pagemax }} 页</span>
+          <span class="page-select">
+            <select :value="page" @change="goPage(Number(($event.target as HTMLSelectElement).value))">
+              <option v-for="p in pageRange" :key="p" :value="p">{{ p }}</option>
+            </select>
+          </span>
+          <button type="button" class="pagination-btn" :disabled="page >= pagemax" @click="goPage(page + 1)">下一页</button>
+        </div>
       </div>
       <p v-else-if="pagemax === 1 && listData.length > 0" class="more-link">
         <button type="button" class="btn btn-outline" @click="scrollToMoneyTable">更多记账明细</button>
@@ -93,9 +96,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
 import { useRouter } from 'vue-router'
+import { useAlert } from '../composables/useAlert'
+import { useConfirm } from '../composables/useConfirm'
 import AppHeader from '../components/AppHeader.vue'
 import NavBars from '../components/NavBars.vue'
 import { Pencil, Trash2 } from 'lucide-vue-next'
+
+const { show: showAlert } = useAlert()
+const { showConfirm } = useConfirm()
 
 const API = '/api'
 
@@ -200,7 +208,8 @@ function goPage (p: number) {
 }
 
 async function confirmDel (id: number, isAccount: boolean) {
-  if (!confirm('确定删除这条记录？')) return
+  const ok = await showConfirm('确定删除这条记录？', 'warning')
+  if (!ok) return
   const body = new URLSearchParams()
   body.set('type', 'del')
   body.set('data', isAccount ? base64Json({ acid: id }) : base64Json({ tid: id }))
@@ -211,9 +220,9 @@ async function confirmDel (id: number, isAccount: boolean) {
   const ret = out && typeof out.ret === 'boolean' ? out.ret : false
   const msg = out && typeof out.msg === 'string' ? out.msg : (data.data || '删除失败')
   if (ret) {
-    loadFind(page)
+    loadFind(page.value)
   } else {
-    alert(msg)
+    showAlert(msg, 'error')
   }
 }
 
@@ -325,6 +334,56 @@ onMounted(() => {
 }
 .actions button.btn-link:hover {
   color: var(--color-expense);
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-xl) 0 var(--space-lg);
+}
+.pagination-wrap .pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+}
+.pagination-wrap .pagination-btn {
+  min-height: var(--touch-min);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.pagination-wrap .pagination-btn:hover:not(:disabled) {
+  background: var(--color-bg);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.pagination-wrap .pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pagination-wrap .pagination-info {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+.pagination-wrap .page-select select {
+  min-height: 36px;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  font-size: 0.9rem;
 }
 
 .more-link {

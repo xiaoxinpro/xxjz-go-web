@@ -53,6 +53,22 @@ func (r *UserRepo) GetByUID(uid int64) (*User, error) {
 	return &u, nil
 }
 
+func (r *UserRepo) GetByEmail(email string) (*User, error) {
+	row := r.db.QueryRow(
+		`SELECT uid, username, password, email, utime FROM xxjz_user WHERE email = ?`,
+		email,
+	)
+	var u User
+	err := row.Scan(&u.UID, &u.Username, &u.Password, &u.Email, &u.Utime)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 func (r *UserRepo) GetEmail(uid int64) (string, error) {
 	var email string
 	err := r.db.QueryRow(`SELECT email FROM xxjz_user WHERE uid = ?`, uid).Scan(&email)

@@ -37,6 +37,7 @@ type AppConfig struct {
 	Description string `yaml:"description"`
 	Welcome     string `yaml:"welcome"`
 	Version     string `yaml:"version"`
+	BaseURL     string `yaml:"base_url"` // e.g. https://example.com for reset password link
 }
 
 type UserConfig struct {

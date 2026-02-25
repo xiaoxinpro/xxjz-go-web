@@ -55,9 +55,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
+import { useAlert } from '../composables/useAlert'
 import AppHeader from '../components/AppHeader.vue'
 import NavBars from '../components/NavBars.vue'
 import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from 'lucide-vue-next'
+
+const { show: showAlert } = useAlert()
 
 const API = '/api'
 
@@ -92,17 +95,17 @@ function loadFunds () {
 function onSubmit () {
   const moneyNum = Number(form.value.money)
   if (!Number.isFinite(moneyNum) || moneyNum <= 0) {
-    alert('请输入有效转账金额')
+    showAlert('请输入有效转账金额', 'warning')
     return
   }
   const src = form.value.source_fid === '' ? NaN : Number(form.value.source_fid)
   const tgt = form.value.target_fid === '' ? NaN : Number(form.value.target_fid)
   if (!Number.isFinite(src) || !Number.isFinite(tgt)) {
-    alert('请选择转出账户和转入账户')
+    showAlert('请选择转出账户和转入账户', 'warning')
     return
   }
   if (src === tgt) {
-    alert('转出账户与转入账户不能相同')
+    showAlert('转出账户与转入账户不能相同', 'warning')
     return
   }
   const payload = {
@@ -124,22 +127,22 @@ function onSubmit () {
     .then(res => res.json())
     .then((data: { uid: number; data: { ret?: boolean; msg?: string } }) => {
       if (data.uid <= 0) {
-        alert('请先登录')
+        showAlert('请先登录', 'error')
         return
       }
       const d = data.data as { ret?: boolean; msg?: string }
       if (d && d.ret) {
-        alert(d.msg || '转账成功')
+        showAlert(d.msg || '转账成功', 'success')
         form.value.money = ''
         form.value.source_fid = ''
         form.value.target_fid = ''
         form.value.mark = ''
         form.value.time = new Date().toISOString().slice(0, 10)
       } else {
-        alert(d && d.msg ? d.msg : '转账失败')
+        showAlert(d && d.msg ? d.msg : '转账失败', 'error')
       }
     })
-    .catch(() => alert('请求失败'))
+    .catch(() => showAlert('请求失败', 'error'))
 }
 
 onMounted(() => {

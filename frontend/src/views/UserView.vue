@@ -53,8 +53,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAlert } from '../composables/useAlert'
 import AppHeader from '../components/AppHeader.vue'
 import { useUserStore } from '../stores/user'
+
+const { show: showAlert } = useAlert()
 
 const API = '/api'
 const router = useRouter()
@@ -104,18 +107,18 @@ async function onUpdateUsername() {
   const data = await res.json()
   if (data.uid > 0) {
     userStore.username = data.username || accountForm.value.username
-    alert('保存成功，请重新登录后生效。')
-    userStore.logout()
+    showAlert('保存成功，请重新登录后生效。', 'success')
+    await userStore.logout()
     router.push('/login')
   } else {
-    alert(data.username || '保存失败')
+    showAlert(data.username || '保存失败', 'error')
   }
 }
 
 async function onUpdatePassword() {
   if (isDemo.value) return
   if (pwdForm.value.new !== pwdForm.value.confirm) {
-    alert('两次输入的新密码不一致')
+    showAlert('两次输入的新密码不一致', 'warning')
     return
   }
   const body = new URLSearchParams()
@@ -125,11 +128,11 @@ async function onUpdatePassword() {
   const res = await fetch(API + '/user', { method: 'POST', body, credentials: 'include' })
   const data = await res.json()
   if (data.uid > 0) {
-    alert('密码已修改，请重新登录。')
-    userStore.logout()
+    showAlert('密码已修改，请重新登录。', 'success')
+    await userStore.logout()
     router.push('/login')
   } else {
-    alert(data.username || '修改失败')
+    showAlert(data.username || '修改失败', 'error')
   }
 }
 

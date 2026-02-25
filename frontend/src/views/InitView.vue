@@ -1,7 +1,7 @@
 <template>
   <div class="init-page">
     <div class="init-card card">
-      <h1 class="init-title">小歆记账 · 初始化</h1>
+      <h1 class="init-title">{{ appStore.title }} · 初始化</h1>
       <p class="intro">首次使用请创建管理员账号，或导入旧数据库。</p>
 
       <section class="section card">
@@ -45,10 +45,12 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAppStore } from '../stores/app'
 import { UserPlus, Upload } from 'lucide-vue-next'
 
 const API = '/api'
 const router = useRouter()
+const appStore = useAppStore()
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const setup = reactive({

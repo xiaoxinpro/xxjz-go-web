@@ -90,7 +90,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useAlert } from '../composables/useAlert'
 import AppHeader from '../components/AppHeader.vue'
+
+const { show: showAlert } = useAlert()
 
 const API = '/api'
 
@@ -149,7 +152,7 @@ async function onAdd() {
     addForm.value = { fundsname: '', fundsmoney: 0 }
     loadFunds()
   } else {
-    alert(Array.isArray(out) ? out[1] : (data.data || '添加失败'))
+    showAlert(Array.isArray(out) ? out[1] : (data.data || '添加失败'), 'error')
   }
 }
 
@@ -170,7 +173,7 @@ async function onEdit() {
     editing.value = null
     loadFunds()
   } else {
-    alert(Array.isArray(out) ? out[1] : (data.data || '保存失败'))
+    showAlert(Array.isArray(out) ? out[1] : (data.data || '保存失败'), 'error')
   }
 }
 
@@ -192,7 +195,7 @@ async function onDelete() {
     deleting.value = null
     loadFunds()
   } else {
-    alert(Array.isArray(out) ? out[1] : (data.data || '删除失败'))
+    showAlert(Array.isArray(out) ? out[1] : (data.data || '删除失败'), 'error')
   }
 }
 

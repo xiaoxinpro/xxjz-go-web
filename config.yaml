@@ -10,11 +10,12 @@ database:
   table_prefix: "xxjz_"
 
 app:
-  title: "小歆记账App"
+  title: "小歆记账Go"
   keywords: ""
   description: ""
   welcome: "欢迎使用！"
   version: "2.2.0"
+  base_url: ""  # 前端地址，用于找回密码链接，如 https://yoursite.com
 
 user:
   login_times: 10

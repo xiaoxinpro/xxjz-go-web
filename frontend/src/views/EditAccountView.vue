@@ -78,9 +78,14 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { useAlert } from '../composables/useAlert'
+import { useConfirm } from '../composables/useConfirm'
 import AppHeader from '../components/AppHeader.vue'
 import NavBars from '../components/NavBars.vue'
 import { ImagePlus, Trash2 } from 'lucide-vue-next'
+
+const { show: showAlert } = useAlert()
+const { showConfirm } = useConfirm()
 
 const API = '/api'
 const route = useRoute()
@@ -224,25 +229,26 @@ function onFileChange (e: Event) {
       uploading.value = false
       input.value = ''
       if (data.uid <= 0) {
-        alert(data.data || '请先登录')
+        showAlert(data.data || '请先登录', 'error')
         return
       }
       if (Array.isArray(data.upload) && data.upload.length > 0) {
         imageList.value = [...imageList.value, ...data.upload]
       }
       if (data.data && !data.upload) {
-        alert(data.data)
+        showAlert(data.data, 'error')
       }
     })
     .catch(() => {
       uploading.value = false
       input.value = ''
-      alert('上传失败')
+      showAlert('上传失败', 'error')
     })
 }
 
-function deleteImage (id: number) {
-  if (!confirm('确定要删除这张图片吗？')) return
+async function deleteImage (id: number) {
+  const ok = await showConfirm('确定要删除这张图片吗？', 'warning')
+  if (!ok) return
   const data = base64Json({ acid: acid.value, id })
   fetch(`${API}/account`, {
     method: 'POST',
@@ -283,22 +289,23 @@ function onSubmit () {
     .then(res => res.json())
     .then((data: { uid: number; data: { ret?: boolean; msg?: string } }) => {
       if (data.uid <= 0) {
-        alert(typeof data.data === 'string' ? data.data : '请先登录')
+        showAlert(typeof data.data === 'string' ? data.data : '请先登录', 'error')
         return
       }
       const d = data.data
       if (d?.ret) {
-        alert(d.msg || '修改成功')
+        showAlert(d.msg || '修改成功', 'success')
         router.push('/home')
       } else {
-        alert(d?.msg || '修改失败')
+        showAlert(d?.msg || '修改失败', 'error')
       }
     })
-    .catch(() => alert('请求失败'))
+    .catch(() => showAlert('请求失败', 'error'))
 }
 
-function onDelete () {
-  if (!confirm('确定要删除这条记账吗？')) return
+async function onDelete () {
+  const ok = await showConfirm('确定要删除这条记账吗？', 'warning')
+  if (!ok) return
   const body = new URLSearchParams()
   body.set('type', 'del')
   body.set('data', base64Json({ acid: acid.value }))
@@ -312,13 +319,13 @@ function onDelete () {
     .then((data: { uid: number; data: { ret?: boolean; msg?: string } }) => {
       if (data.uid <= 0) return
       if (data.data?.ret) {
-        alert(data.data.msg || '已删除')
+        showAlert(data.data.msg || '已删除', 'success')
         router.push('/home')
       } else {
-        alert(data.data?.msg || '删除失败')
+        showAlert(data.data?.msg || '删除失败', 'error')
       }
     })
-    .catch(() => alert('请求失败'))
+    .catch(() => showAlert('请求失败', 'error'))
 }
 
 onMounted(() => {

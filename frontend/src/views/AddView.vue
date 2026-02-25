@@ -84,9 +84,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
+import { useAlert } from '../composables/useAlert'
 import AppHeader from '../components/AppHeader.vue'
 import NavBars from '../components/NavBars.vue'
 import { ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, ImagePlus } from 'lucide-vue-next'
+
+const { show: showAlert } = useAlert()
 
 const API = '/api'
 
@@ -229,7 +232,7 @@ function onSubmit () {
   if (uid <= 0) return
   const moneyNum = Number(form.value.money)
   if (!Number.isFinite(moneyNum) || moneyNum < 0) {
-    alert('请输入有效金额')
+    showAlert('请输入有效金额', 'warning')
     return
   }
   const zhifu = activeTab.value === 'out' ? 2 : 1
@@ -254,7 +257,7 @@ function onSubmit () {
     .then(res => res.json())
     .then((data: { uid: number; data: { ret?: boolean; msg?: string; acid?: number } }) => {
       if (data.uid <= 0) {
-        alert(data.data && typeof data.data === 'string' ? data.data : '请先登录')
+        showAlert(data.data && typeof data.data === 'string' ? data.data : '请先登录', 'error')
         return
       }
       const d = data.data as { ret?: boolean; msg?: string; acid?: number }
@@ -262,25 +265,25 @@ function onSubmit () {
         const acid = d.acid
         if (acid != null && pendingFiles.value.length > 0) {
           uploadPendingFiles(acid).then(() => {
-            alert(d.msg || '添加成功')
+            showAlert(d.msg || '添加成功', 'success')
             form.value.money = ''
             form.value.acremark = ''
             form.value.actime = new Date().toISOString().slice(0, 10)
             loadFind()
           })
         } else {
-          alert(d.msg || '添加成功')
-          form.value.money = ''
-          form.value.acremark = ''
-          form.value.actime = new Date().toISOString().slice(0, 10)
-          pendingFiles.value = []
+showAlert(d.msg || '添加成功', 'success')
+            form.value.money = ''
+            form.value.acremark = ''
+            form.value.actime = new Date().toISOString().slice(0, 10)
+            pendingFiles.value = []
           loadFind()
         }
       } else {
-        alert(d && d.msg ? d.msg : '添加失败')
+        showAlert(d && d.msg ? d.msg : '添加失败', 'error')
       }
     })
-    .catch(() => alert('请求失败'))
+    .catch(() => showAlert('请求失败', 'error'))
 }
 
 onMounted(() => {

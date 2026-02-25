@@ -9,6 +9,9 @@ const router = createRouter({
     { path: '/', redirect: '/home' },
     { path: '/init', name: 'Init', component: () => import('../views/InitView.vue'), meta: { init: true } },
     { path: '/login', name: 'Login', component: () => import('../views/LoginView.vue'), meta: { guest: true } },
+    { path: '/regist', name: 'Regist', component: () => import('../views/RegistView.vue'), meta: { guest: true } },
+    { path: '/forget', name: 'Forget', component: () => import('../views/ForgetView.vue'), meta: { guest: true } },
+    { path: '/forget/reset', name: 'ForgetReset', component: () => import('../views/ForgetResetView.vue'), meta: { guest: true } },
     { path: '/home', name: 'Home', component: () => import('../views/HomeView.vue'), meta: { requiresAuth: true } },
     { path: '/add/transfer', name: 'AddTransfer', component: () => import('../views/AddTransferView.vue'), meta: { requiresAuth: true } },
     { path: '/add', name: 'Add', component: () => import('../views/AddView.vue'), meta: { requiresAuth: true } },
@@ -34,8 +37,16 @@ router.beforeEach(async (to) => {
   if (!initialized && to.path !== '/init') return { path: '/init' }
   if (initialized && to.path === '/init') return { path: '/login' }
 
+  const userStore = useUserStore()
+  if (to.meta.guest && (to.path === '/login' || to.path === '/regist' || to.path === '/forget' || to.path === '/forget/reset')) {
+    const ok = await userStore.restoreFromSession()
+    if (ok) {
+      const redirect = (to.query.redirect as string) || '/home'
+      return { path: redirect.startsWith('/') ? redirect : '/' + redirect, replace: true }
+    }
+  }
+
   if (to.meta.requiresAuth) {
-    const userStore = useUserStore()
     if (userStore.uid <= 0) {
       const ok = await userStore.restoreFromSession()
       if (!ok) return { path: '/login', query: { redirect: to.fullPath } }

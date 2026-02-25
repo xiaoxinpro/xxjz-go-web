@@ -25,7 +25,12 @@ export const useUserStore = defineStore('user', () => {
     return { ok: false, message: data.uname || '登录失败' }
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await fetch(`${API}/logout`, { method: 'POST', credentials: 'include' })
+    } catch {
+      /* ignore network error, still clear local state */
+    }
     uid.value = 0
     username.value = ''
   }

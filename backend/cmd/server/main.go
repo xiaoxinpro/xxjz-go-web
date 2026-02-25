@@ -12,6 +12,7 @@ import (
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/config"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/handler"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/importsql"
+	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/loginlock"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/repository"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/service"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/pkg/db"
@@ -50,7 +51,8 @@ func main() {
 	transferRepo := repository.NewTransferRepo(database)
 	fundsRepo := repository.NewFundsRepo(database)
 	classRepo := repository.NewClassRepo(database)
-	userSvc := service.NewUserService(cfg, userRepo)
+	lockStore := loginlock.NewStore(3600) // 1h TTL, match old project
+	userSvc := service.NewUserService(cfg, userRepo, lockStore)
 	statSvc := service.NewStatisticService(accountRepo)
 	findSvc := service.NewFindService(accountRepo, transferRepo, cfg.User.PageSize)
 	fundsSvc := service.NewFundsService(cfg, fundsRepo, accountRepo, transferRepo)
@@ -87,6 +89,24 @@ func main() {
 	{
 		api.GET("/login", apiHandler.Login)
 		api.POST("/login", apiHandler.Login)
+		api.GET("/regist", apiHandler.Regist)
+		api.POST("/regist", apiHandler.Regist)
+		api.GET("/forget/request", apiHandler.ForgetRequest)
+		api.POST("/forget/request", apiHandler.ForgetRequest)
+		api.GET("/forget/verify", apiHandler.ForgetVerify)
+		api.POST("/forget/verify", apiHandler.ForgetVerify)
+		api.GET("/forget/reset", apiHandler.ForgetReset)
+		api.POST("/forget/reset", apiHandler.ForgetReset)
+		api.GET("/login_weixin", apiHandler.LoginWeixin)
+		api.POST("/login_weixin", apiHandler.LoginWeixin)
+		api.GET("/bind_weixin", apiHandler.BindWeixin)
+		api.POST("/bind_weixin", apiHandler.BindWeixin)
+		api.GET("/regist_weixin", apiHandler.RegistWeixin)
+		api.POST("/regist_weixin", apiHandler.RegistWeixin)
+		api.GET("/shell_weixin", apiHandler.ShellWeixin)
+		api.POST("/shell_weixin", apiHandler.ShellWeixin)
+		api.GET("/logout", apiHandler.Logout)
+		api.POST("/logout", apiHandler.Logout)
 		api.GET("/version", apiHandler.Version)
 		api.POST("/version", apiHandler.Version)
 		api.GET("/user", apiHandler.User)
@@ -113,6 +133,24 @@ func main() {
 	{
 		compat.GET("/login", apiHandler.Login)
 		compat.POST("/login", apiHandler.Login)
+		compat.GET("/regist", apiHandler.Regist)
+		compat.POST("/regist", apiHandler.Regist)
+		compat.GET("/forget/request", apiHandler.ForgetRequest)
+		compat.POST("/forget/request", apiHandler.ForgetRequest)
+		compat.GET("/forget/verify", apiHandler.ForgetVerify)
+		compat.POST("/forget/verify", apiHandler.ForgetVerify)
+		compat.GET("/forget/reset", apiHandler.ForgetReset)
+		compat.POST("/forget/reset", apiHandler.ForgetReset)
+		compat.GET("/login_weixin", apiHandler.LoginWeixin)
+		compat.POST("/login_weixin", apiHandler.LoginWeixin)
+		compat.GET("/bind_weixin", apiHandler.BindWeixin)
+		compat.POST("/bind_weixin", apiHandler.BindWeixin)
+		compat.GET("/regist_weixin", apiHandler.RegistWeixin)
+		compat.POST("/regist_weixin", apiHandler.RegistWeixin)
+		compat.GET("/shell_weixin", apiHandler.ShellWeixin)
+		compat.POST("/shell_weixin", apiHandler.ShellWeixin)
+		compat.GET("/logout", apiHandler.Logout)
+		compat.POST("/logout", apiHandler.Logout)
 		compat.GET("/version", apiHandler.Version)
 		compat.POST("/version", apiHandler.Version)
 		compat.GET("/user", apiHandler.User)

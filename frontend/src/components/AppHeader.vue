@@ -6,7 +6,7 @@
       </router-link>
     </div>
     <h1 class="header-title">
-      <router-link to="/home" class="header-link">{{ title }}</router-link>
+      <router-link to="/home" class="header-link">{{ appStore.title }}</router-link>
     </h1>
     <div class="header-right" ref="dropdownRef">
       <button type="button" class="dropdown-trigger" aria-haspopup="true" :aria-expanded="menuOpen" @click="toggleMenu" aria-label="菜单">
@@ -33,24 +33,15 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { useAppStore } from '../stores/app'
 import { User, Menu, BarChart3, Wallet, Tags, Settings, LogOut } from 'lucide-vue-next'
 
 const router = useRouter()
 const userStore = useUserStore()
+const appStore = useAppStore()
 
-const title = ref('小歆记账')
 const menuOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
-
-async function loadVersion() {
-  try {
-    const res = await fetch('/api/version', { credentials: 'include' })
-    const data = await res.json()
-    if (data.title) title.value = data.title
-  } catch {
-    /* keep default title */
-  }
-}
 
 function toggleMenu() {
   menuOpen.value = !menuOpen.value
@@ -60,9 +51,9 @@ function closeMenu() {
   menuOpen.value = false
 }
 
-function onLogout() {
+async function onLogout() {
   closeMenu()
-  userStore.logout()
+  await userStore.logout()
   router.push('/login')
 }
 
@@ -73,7 +64,6 @@ function onClickOutside(e: MouseEvent) {
 }
 
 onMounted(() => {
-  loadVersion()
   document.addEventListener('click', onClickOutside)
 })
 

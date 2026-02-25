@@ -93,7 +93,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useAlert } from '../composables/useAlert'
+import { useConfirm } from '../composables/useConfirm'
 import AppHeader from '../components/AppHeader.vue'
+
+const { show: showAlert } = useAlert()
+const { showConfirm } = useConfirm()
 
 const API = '/api'
 
@@ -137,7 +142,7 @@ async function onAdd() {
     addForm.value = { classname: '', classtype: 2 }
     loadClass()
   } else {
-    alert(Array.isArray(out) ? out[1] : (data.data || '添加失败'))
+    showAlert(Array.isArray(out) ? out[1] : (data.data || '添加失败'), 'error')
   }
 }
 
@@ -158,7 +163,7 @@ async function onEdit() {
     editing.value = null
     loadClass()
   } else {
-    alert(Array.isArray(out) ? out[1] : (data.data || '保存失败'))
+    showAlert(Array.isArray(out) ? out[1] : (data.data || '保存失败'), 'error')
   }
 }
 
@@ -170,11 +175,12 @@ async function turnType(c: ClassRow, classtype: number) {
   const data = await res.json()
   const out = data.data
   if (Array.isArray(out) && out[0] === true) loadClass()
-  else alert(Array.isArray(out) ? out[1] : (data.data || '操作失败'))
+  else showAlert(Array.isArray(out) ? out[1] : (data.data || '操作失败'), 'error')
 }
 
-function confirmDel(c: ClassRow) {
-  if (!confirm(`确定删除分类「${c.classname}」？`)) return
+async function confirmDel(c: ClassRow) {
+  const ok = await showConfirm(`确定删除分类「${c.classname}」？`, 'warning')
+  if (!ok) return
   doDel(c.classid)
 }
 
@@ -186,7 +192,7 @@ async function doDel(classid: number) {
   const data = await res.json()
   const out = data.data
   if (Array.isArray(out) && out[0] === true) loadClass()
-  else alert(Array.isArray(out) ? out[1] : (data.data || '删除失败'))
+  else showAlert(Array.isArray(out) ? out[1] : (data.data || '删除失败'), 'error')
 }
 
 onMounted(() => loadClass())

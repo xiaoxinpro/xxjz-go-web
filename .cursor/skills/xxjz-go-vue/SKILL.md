@@ -32,6 +32,8 @@ description: 小歆记账项目 Go 后端与 Vue3 前端的代码风格与约定
 - **页面内主操作（导航、筛选、次要 CTA）**: 优先使用 `.btn`、`.btn-primary`、`.btn-default`、`.btn-outline`，按功能选择；禁止将明显的主操作（如年度切换、展开更多）做成纯文字链接（无 .btn）。
 - **表格内紧凑操作**: 编辑/删除/转为支出等可继续使用 `.btn-link`（无边框、主色/危险色），或使用小号 `.btn .btn-outline`；不要求与主 CTA 同款实心按钮。
 - **多端适配**: 采用移动优先；使用统一断点（640px / 768px / 1024px / 1280px）；列表/表格在窄屏使用 `.table-wrap` 横向滚动或卡片列表，避免撑破视口；触控目标不小于约 44px（使用 `var(--touch-min)`）；新页面需在手机、平板、PC 下均可正常使用。
+- **提示弹窗**: 统一使用项目封装的 `useAlert()` 的 `show(message, type?)` 进行提示（见 `frontend/src/composables/useAlert.ts`），由 `AlertModal` 组件统一渲染；禁止使用原生 `alert()`。`type` 可选 `'info'`（默认）、`'success'`、`'warning'`、`'error'`，用于区分提示、成功、警告、错误等场景，弹窗会展示对应图标与按钮样式。提示样式遵循 design tokens 与全局 `.modal-mask`、`.modal` 约定。
+- **确认弹窗**: 需用户确认再执行的操作（如删除前二次确认）统一使用 `useConfirm()` 的 `showConfirm(message, type?)`（见 `frontend/src/composables/useConfirm.ts`），返回 `Promise<boolean>`，由 `ConfirmModal` 组件统一渲染（取消 / 确定）；禁止使用原生 `confirm()`。调用示例：`const ok = await showConfirm('确定删除？', 'warning'); if (!ok) return;`。`type` 可选 `'warning'`（默认）、`'error'`、`'info'`，用于图标与确定按钮样式。
 - 新页面与组件需遵循同一套 design tokens、类名约定与多端规则，以保持与现有 UI 一致。
 
 ## 通用
