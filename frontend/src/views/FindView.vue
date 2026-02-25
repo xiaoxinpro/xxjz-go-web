@@ -1,12 +1,10 @@
 <template>
   <div class="find-page">
-    <header class="header">
-      <span>小歆记账</span>
-    </header>
-    <main class="main">
-      <form class="form" @submit.prevent="onQuery">
-        <fieldset>
-          <legend>查询账目</legend>
+    <AppHeader />
+    <main class="main page-main">
+      <div class="filter-card card">
+        <h2 class="card-title"><Search size="20" class="title-icon" /> 查询账目</h2>
+        <form class="form" @submit.prevent="onQuery">
           <div class="field">
             <label>资金账户</label>
             <select v-model="query.fid">
@@ -42,14 +40,16 @@
             <label>备注信息</label>
             <input v-model.trim="query.acremark" type="text" placeholder="备注" />
           </div>
-          <p><button type="submit" class="btn btn-primary">查询</button></p>
-          <p><button type="button" class="btn btn-danger" @click="onReset">重置</button></p>
-          <p><router-link to="/home" class="btn btn-default">返回</router-link></p>
-        </fieldset>
-      </form>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">查询</button>
+            <button type="button" class="btn btn-danger" @click="onReset">重置</button>
+            <router-link to="/home" class="btn btn-default">返回</router-link>
+          </div>
+        </form>
+      </div>
 
       <div v-if="searched" class="result-section">
-        <div id="money-table" class="summary alert">
+        <div id="money-table" class="summary card">
           <p class="summary-line">
             收入: <span class="money-in">{{ formatMoney(sumIn) }}</span>
             支出: <span class="money-out">{{ formatMoney(sumOut) }}</span>
@@ -57,38 +57,43 @@
             <span class="badge">{{ isTransfer ? '含转账' : '不含转账' }}</span>
           </p>
         </div>
-        <table class="list-table">
-          <thead>
-            <tr><th>分类</th><th>金额</th><th>收支</th><th>时间</th><th>备注</th><th>操作</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in listData" :key="row.classid === 0 ? 't' + row.id : 'a' + row.id">
-              <td>{{ row.class }}</td>
-              <td :class="row.typeid === 1 ? 'money-in' : 'money-out'">{{ formatMoney(row.money) }}</td>
-              <td>{{ row.funds }} {{ row.type }}</td>
-              <td class="time">{{ formatTime(row.time) }}</td>
-              <td>{{ row.mark }}</td>
-              <td>
-                <template v-if="row.classid > 0">
-                  <router-link :to="'/edit/' + row.id">编辑</router-link>
-                  <a href="javascript:void(0)" @click="() => {}"> 删除</a>
-                </template>
-                <template v-else>
-                  <router-link :to="'/edit/transfer/' + row.id">编辑</router-link>
-                  <a href="javascript:void(0)" @click="() => {}"> 删除</a>
-                </template>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="pagination" v-if="pagemax > 1">
-          <button type="button" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-          <span class="page-select">
-            <select :value="page" @change="goPage(Number(($event.target as HTMLSelectElement).value))">
-              <option v-for="p in pageRange" :key="p" :value="p">{{ p }}</option>
-            </select>
-          </span>
-          <button type="button" :disabled="page >= pagemax" @click="goPage(page + 1)">下一页</button>
+        <div class="table-wrap">
+          <table class="list-table">
+            <thead>
+              <tr><th>分类</th><th>金额</th><th>收支</th><th>时间</th><th>备注</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in listData" :key="row.classid === 0 ? 't' + row.id : 'a' + row.id">
+                <td>{{ row.class }}</td>
+                <td :class="row.typeid === 1 ? 'money-in' : 'money-out'">{{ formatMoney(row.money) }}</td>
+                <td>{{ row.funds }} {{ row.type }}</td>
+                <td class="time">{{ formatTime(row.time) }}</td>
+                <td>{{ row.mark }}</td>
+                <td class="actions">
+                  <template v-if="row.classid > 0">
+                    <router-link :to="'/edit/' + row.id" class="btn-link" title="编辑"><Pencil size="16" /></router-link>
+                    <button type="button" class="btn-link" title="删除" @click="confirmDel(row.id, true)"><Trash2 size="16" /></button>
+                  </template>
+                  <template v-else>
+                    <router-link :to="'/edit/transfer/' + row.id" class="btn-link" title="编辑"><Pencil size="16" /></router-link>
+                    <button type="button" class="btn-link" title="删除" @click="confirmDel(row.id, false)"><Trash2 size="16" /></button>
+                  </template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-wrap" v-if="pagemax > 1">
+          <div class="pagination">
+            <button type="button" class="pagination-btn" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+            <span class="pagination-info">第 {{ page }} / {{ pagemax }} 页</span>
+            <span class="page-select">
+              <select :value="page" @change="goPage(Number(($event.target as HTMLSelectElement).value))">
+                <option v-for="p in pageRange" :key="p" :value="p">{{ p }}</option>
+              </select>
+            </span>
+            <button type="button" class="pagination-btn" :disabled="page >= pagemax" @click="goPage(page + 1)">下一页</button>
+          </div>
         </div>
       </div>
     </main>
@@ -99,7 +104,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
+import { useAlert } from '../composables/useAlert'
+import { useConfirm } from '../composables/useConfirm'
+import AppHeader from '../components/AppHeader.vue'
 import NavBars from '../components/NavBars.vue'
+import { Search, Pencil, Trash2 } from 'lucide-vue-next'
+
+const { show: showAlert } = useAlert()
+const { showConfirm } = useConfirm()
 
 const API = '/api'
 
@@ -251,6 +263,25 @@ function goPage (p: number) {
   doFind(p)
 }
 
+async function confirmDel (id: number, isAccount: boolean) {
+  const ok = await showConfirm('确定删除这条记录？', 'warning')
+  if (!ok) return
+  const body = new URLSearchParams()
+  body.set('type', 'del')
+  body.set('data', isAccount ? base64Json({ acid: id }) : base64Json({ tid: id }))
+  const url = isAccount ? `${API}/account` : `${API}/transfer`
+  const res = await fetch(url, { method: 'POST', body, credentials: 'include' })
+  const data = await res.json()
+  const out = data.data
+  const ret = out && typeof out.ret === 'boolean' ? out.ret : false
+  const msg = out && typeof out.msg === 'string' ? out.msg : (data.data || '删除失败')
+  if (ret) {
+    doFind(page.value)
+  } else {
+    showAlert(msg, 'error')
+  }
+}
+
 onMounted(() => {
   loadFunds()
   loadAclass()
@@ -269,36 +300,111 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.find-page { min-height: 100vh; display: flex; flex-direction: column; }
-.header { padding: 1rem 1.5rem; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.main { flex: 1; padding: 1rem 1.5rem; padding-bottom: 4rem; }
+.find-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.main {
+  flex: 1;
+  padding-bottom: 4.5rem;
+}
+.filter-card .card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.title-icon {
+  color: var(--color-primary);
+}
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.form-actions .btn {
+  width: 100%;
+}
 
-.form fieldset { border: none; padding: 0; }
-.form legend { font-weight: 600; margin-bottom: 0.75rem; }
-.field { margin-bottom: 0.75rem; }
-.field label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; }
-.field input, .field select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-.btn { display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; text-align: center; text-decoration: none; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #333; width: 100%; margin-bottom: 0.5rem; }
-.btn-primary { background: #19a7f0; color: #fff; border-color: #19a7f0; }
-.btn-danger { background: #e74c3c; color: #fff; border-color: #e74c3c; }
-.btn-default { }
+.result-section {
+  margin-top: var(--space-lg);
+}
+.summary.card {
+  margin-bottom: var(--space-lg);
+}
+.table-wrap {
+  margin-bottom: var(--space-lg);
+}
+.actions {
+  white-space: nowrap;
+}
+.actions .btn-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: var(--space-xs);
+  margin-right: var(--space-xs);
+  color: var(--color-primary);
+}
+.actions .btn-link:hover {
+  color: var(--color-primary-hover);
+}
+.actions button.btn-link {
+  color: var(--color-danger);
+}
+.actions button.btn-link:hover {
+  color: var(--color-expense);
+}
 
-.result-section { margin-top: 1.5rem; }
-.summary.alert { padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 6px; background: #f0f0f0; }
-.summary-line { margin: 0; font-size: 0.9rem; }
-.summary-line .money-in { color: #0a0; }
-.summary-line .money-out { color: #c00; }
-.summary-line .money-balance { color: #07c; }
-.badge { margin-left: 6px; padding: 2px 6px; border-radius: 10px; background: #ddd; font-size: 0.75rem; }
-
-.list-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-bottom: 1rem; }
-.list-table th, .list-table td { padding: 0.4rem; border: 1px solid #eee; }
-.list-table th { background: #fafafa; }
-.list-table .money-in { color: #0a0; }
-.list-table .money-out { color: #c00; }
-.list-table .time { white-space: nowrap; }
-.list-table a { margin-right: 0.25rem; }
-
-.pagination { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
-.pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-xl) 0 var(--space-lg);
+}
+.pagination-wrap .pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+}
+.pagination-wrap .pagination-btn {
+  min-height: var(--touch-min);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.pagination-wrap .pagination-btn:hover:not(:disabled) {
+  background: var(--color-bg);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.pagination-wrap .pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pagination-wrap .pagination-info {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+.pagination-wrap .page-select select {
+  min-height: 36px;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  font-size: 0.9rem;
+}
 </style>

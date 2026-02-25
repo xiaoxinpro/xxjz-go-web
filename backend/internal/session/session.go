@@ -11,6 +11,8 @@ const (
 	KeyUID          = "uid"
 	KeyUsername     = "username"
 	KeyUserShell    = "user_shell"
+	KeySessionID    = "sessionid" // opaque id returned to client (compat with old API)
+	KeyWxCode       = "wx_code"    // js_code from mini-program, for bind/regist verification
 	KeyWxOpenID     = "wx_openid"
 	KeyWxSessionKey = "wx_session_key"
 	KeyWxUnionID    = "wx_unionid"

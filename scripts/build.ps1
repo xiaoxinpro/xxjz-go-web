@@ -14,7 +14,7 @@ New-Item -ItemType Directory -Path $BuildDir | Out-Null
 
 Write-Host "Building frontend..."
 Set-Location (Join-Path $Root "frontend")
-if (Test-Path package-lock.json) { npm ci } else { npm install }
+npm install
 npm run build
 Set-Location $Root
 

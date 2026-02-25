@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -20,6 +21,7 @@ import (
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/importsql"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/service"
 	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/session"
+	"github.com/xiaoxinpro/xxjz-go-web/backend/internal/wechat"
 )
 
 // UploadDir is the local directory for uploaded images (relative to cwd).
@@ -220,7 +222,7 @@ func (h *APIHandler) InitImport(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "msg": "导入成功", "statements": len(statements), "initialized": initialized})
 }
 
-// Login handles POST/GET: username, password, submit -> { uid, uname }
+// Login handles POST/GET: username, password, submit -> { uid, uname, sessionid }
 func (h *APIHandler) Login(c *gin.Context) {
 	sess := sessions.Default(c)
 	sess.Clear()
@@ -235,11 +237,249 @@ func (h *APIHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": uname})
 		return
 	}
+	sessionID := genSessionID()
+	sess.Set(session.KeySessionID, sessionID)
 	sess.Set(session.KeyUID, uid)
 	sess.Set(session.KeyUsername, uname)
 	sess.Set(session.KeyUserShell, shell)
 	if err := sess.Save(); err != nil {
 		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": "登录失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"uid": uid, "uname": uname, "sessionid": sessionID})
+}
+
+func genSessionID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	return base64.URLEncoding.EncodeToString(b)[:22]
+}
+
+// Regist handles POST/GET: regist_username, regist_password, regist_email (or username, password, email). Returns { uid, msg }.
+func (h *APIHandler) Regist(c *gin.Context) {
+	username := getParam(c, "regist_username")
+	if username == "" {
+		username = getParam(c, "username")
+	}
+	password := getParam(c, "regist_password")
+	if password == "" {
+		password = getParam(c, "password")
+	}
+	email := getParam(c, "regist_email")
+	if email == "" {
+		email = getParam(c, "email")
+	}
+	ok, msg, uid := h.userSvc.RegistShell(username, password, email)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "msg": msg})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"uid": uid, "msg": msg})
+}
+
+// ForgetRequest accepts forget_email (or email). Sends reset link. Returns { uid: true/false, msg } (compat).
+func (h *APIHandler) ForgetRequest(c *gin.Context) {
+	email := getParam(c, "forget_email")
+	if email == "" {
+		email = getParam(c, "email")
+	}
+	ok, msg := h.userSvc.RequestPasswordReset(email)
+	c.JSON(http.StatusOK, gin.H{"uid": ok, "msg": msg})
+}
+
+// ForgetVerify accepts p (token). Returns { ok, username } for reset page.
+func (h *APIHandler) ForgetVerify(c *gin.Context) {
+	p := getParam(c, "p")
+	username, ok := h.userSvc.VerifyForgetToken(p)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "msg": "链接已过期或无效"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "username": username})
+}
+
+// ForgetReset accepts p and new_password (or forget_password). Resets password.
+func (h *APIHandler) ForgetReset(c *gin.Context) {
+	p := getParam(c, "p")
+	newPassword := getParam(c, "new_password")
+	if newPassword == "" {
+		newPassword = getParam(c, "forget_password")
+	}
+	if p == "" || newPassword == "" {
+		var body struct {
+			P           string `json:"p" form:"p"`
+			NewPassword string `json:"new_password" form:"new_password"`
+		}
+		_ = c.ShouldBindJSON(&body)
+		_ = c.ShouldBind(&body)
+		if p == "" {
+			p = body.P
+		}
+		if newPassword == "" {
+			newPassword = body.NewPassword
+		}
+		if newPassword == "" {
+			newPassword = getParam(c, "forget_password")
+		}
+	}
+	ok, msg := h.userSvc.ResetPasswordWithToken(p, newPassword)
+	c.JSON(http.StatusOK, gin.H{"ok": ok, "msg": msg})
+}
+
+// Logout clears the server session so the client is logged out.
+func (h *APIHandler) Logout(c *gin.Context) {
+	sess := sessions.Default(c)
+	sess.Clear()
+	_ = sess.Save()
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// LoginWeixin exchanges js_code for session; if openid bound, logs in and returns uid, uname, sessionid; else uid "-1", uname prompt.
+func (h *APIHandler) LoginWeixin(c *gin.Context) {
+	if !h.cfg.Wechat.Enable {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": "功能未开启，请联系管理员。"})
+		return
+	}
+	jsCode := getParam(c, "js_code")
+	if jsCode == "" {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": "非法访问。"})
+		return
+	}
+	sess := sessions.Default(c)
+	sess.Clear()
+	_ = sess.Save()
+
+	openid, sessionKey, unionid, err := wechat.JSCode2Session(h.cfg.Wechat.OpenIDKey, h.cfg.Wechat.Secret, jsCode)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": err.Error()})
+		return
+	}
+	if openid == "" {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": "无法连接到微信服务器。"})
+		return
+	}
+	sess.Set(session.KeyWxCode, jsCode)
+	sess.Set(session.KeyWxOpenID, openid)
+	sess.Set(session.KeyWxSessionKey, sessionKey)
+	sess.Set(session.KeyWxUnionID, unionid)
+	_ = sess.Save()
+
+	uid, uname, shell := h.userSvc.GetUserByWeixinOpenID(openid)
+	if uid <= 0 {
+		c.JSON(http.StatusOK, gin.H{"uid": "-1", "uname": "新用户，请提交信息注册登陆。", "sessionid": ""})
+		return
+	}
+	sess.Set(session.KeyUID, uid)
+	sess.Set(session.KeyUsername, uname)
+	sess.Set(session.KeyUserShell, shell)
+	sessionID := genSessionID()
+	sess.Set(session.KeySessionID, sessionID)
+	_ = sess.Save()
+	c.JSON(http.StatusOK, gin.H{"uid": uid, "uname": uname, "sessionid": sessionID})
+}
+
+// BindWeixin binds current wechat session to account (username/password). Session must have wx_code from prior LoginWeixin.
+func (h *APIHandler) BindWeixin(c *gin.Context) {
+	if !h.cfg.Wechat.Enable {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": "功能未开启，请联系管理员。"})
+		return
+	}
+	username := getParam(c, "username")
+	password := getParam(c, "password")
+	jsCode := getParam(c, "js_code")
+	sess := sessions.Default(c)
+	if sess.Get(session.KeyWxCode) != jsCode {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": "请先使用微信登陆后再绑定。"})
+		return
+	}
+	openid, _ := sess.Get(session.KeyWxOpenID).(string)
+	sessionKey, _ := sess.Get(session.KeyWxSessionKey).(string)
+	unionid, _ := sess.Get(session.KeyWxUnionID).(string)
+	sess.Clear()
+	_ = sess.Save()
+
+	ok, uid, uname, shell := h.userSvc.UserLogin(username, password)
+	if !ok {
+		sess.Set(session.KeyWxCode, jsCode)
+		sess.Set(session.KeyWxOpenID, openid)
+		sess.Set(session.KeyWxSessionKey, sessionKey)
+		sess.Set(session.KeyWxUnionID, unionid)
+		_ = sess.Save()
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": uname})
+		return
+	}
+	bound, msg := h.userSvc.WeixinBind(uid, openid, sessionKey, unionid)
+	if !bound {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": msg})
+		return
+	}
+	sess.Set(session.KeyUID, uid)
+	sess.Set(session.KeyUsername, uname)
+	sess.Set(session.KeyUserShell, shell)
+	sessionID := genSessionID()
+	sess.Set(session.KeySessionID, sessionID)
+	_ = sess.Save()
+	c.JSON(http.StatusOK, gin.H{"uid": uid, "uname": uname, "sessionid": sessionID})
+}
+
+// RegistWeixin registers with regist_username, regist_password, regist_email and binds current wechat openid.
+func (h *APIHandler) RegistWeixin(c *gin.Context) {
+	if !h.cfg.Wechat.Enable {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "msg": "功能未开启，请联系管理员。"})
+		return
+	}
+	jsCode := getParam(c, "js_code")
+	sess := sessions.Default(c)
+	if sess.Get(session.KeyWxCode) != jsCode {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "msg": "微信登陆验证失败，请重新使用微信登陆。"})
+		return
+	}
+	openid, _ := sess.Get(session.KeyWxOpenID).(string)
+	sessionKey, _ := sess.Get(session.KeyWxSessionKey).(string)
+	unionid, _ := sess.Get(session.KeyWxUnionID).(string)
+
+	username := getParam(c, "regist_username")
+	if username == "" {
+		username = getParam(c, "username")
+	}
+	password := getParam(c, "regist_password")
+	if password == "" {
+		password = getParam(c, "password")
+	}
+	email := getParam(c, "regist_email")
+	if email == "" {
+		email = getParam(c, "email")
+	}
+	ok, msg, uid := h.userSvc.WeixinRegistBind(username, password, email, openid, sessionKey, unionid)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "msg": msg})
+		return
+	}
+	sess.Set(session.KeyWxCode, nil)
+	uid2, uname2, shell2 := h.userSvc.GetUserByWeixinOpenID(openid)
+	if uid2 > 0 {
+		sess.Set(session.KeyUID, uid2)
+		sess.Set(session.KeyUsername, uname2)
+		sess.Set(session.KeyUserShell, shell2)
+	}
+	_ = sess.Save()
+	c.JSON(http.StatusOK, gin.H{"uid": uid, "msg": msg})
+}
+
+// ShellWeixin validates current session and returns uid, uname or 0 and error message.
+func (h *APIHandler) ShellWeixin(c *gin.Context) {
+	if !h.cfg.Wechat.Enable {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": "功能未开启，请联系管理员。"})
+		return
+	}
+	sess := sessions.Default(c)
+	uid := session.GetUID(sess)
+	uname := session.GetUsername(sess)
+	shell := session.GetShell(sess)
+	if uid <= 0 || !h.userSvc.UserShell(uname, shell) {
+		c.JSON(http.StatusOK, gin.H{"uid": 0, "uname": "用户验证失败，请重新登陆。"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"uid": uid, "uname": uname})

@@ -1,9 +1,9 @@
 <template>
   <div class="class-page">
     <AppHeader />
-    <main class="main">
-      <div class="section">
-        <h2>新建分类</h2>
+    <main class="main page-main container">
+      <div class="section card">
+        <h2 class="card-title">新建分类</h2>
         <form class="form" @submit.prevent="onAdd">
           <div class="field">
             <label>名称</label>
@@ -20,8 +20,9 @@
         </form>
       </div>
 
-      <div class="section">
-        <h2>收入分类</h2>
+      <div class="section card">
+        <h2 class="card-title">收入分类</h2>
+        <div class="table-wrap">
         <table class="list-table">
           <thead>
             <tr><th>分类名称</th><th>操作</th></tr>
@@ -37,11 +38,13 @@
             </tr>
           </tbody>
         </table>
+        </div>
         <p v-if="classInList.length === 0" class="muted">暂无收入分类</p>
       </div>
 
-      <div class="section">
-        <h2>支出分类</h2>
+      <div class="section card">
+        <h2 class="card-title">支出分类</h2>
+        <div class="table-wrap">
         <table class="list-table">
           <thead>
             <tr><th>分类名称</th><th>操作</th></tr>
@@ -57,6 +60,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
         <p v-if="classOutList.length === 0" class="muted">暂无支出分类</p>
       </div>
 
@@ -82,14 +86,19 @@
         </div>
       </div>
 
-      <p class="back-link"><router-link to="/home">返回主页</router-link></p>
+      <p class="back-link"><router-link to="/home" class="btn btn-default">返回</router-link></p>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useAlert } from '../composables/useAlert'
+import { useConfirm } from '../composables/useConfirm'
 import AppHeader from '../components/AppHeader.vue'
+
+const { show: showAlert } = useAlert()
+const { showConfirm } = useConfirm()
 
 const API = '/api'
 
@@ -133,7 +142,7 @@ async function onAdd() {
     addForm.value = { classname: '', classtype: 2 }
     loadClass()
   } else {
-    alert(Array.isArray(out) ? out[1] : (data.data || '添加失败'))
+    showAlert(Array.isArray(out) ? out[1] : (data.data || '添加失败'), 'error')
   }
 }
 
@@ -154,7 +163,7 @@ async function onEdit() {
     editing.value = null
     loadClass()
   } else {
-    alert(Array.isArray(out) ? out[1] : (data.data || '保存失败'))
+    showAlert(Array.isArray(out) ? out[1] : (data.data || '保存失败'), 'error')
   }
 }
 
@@ -166,11 +175,12 @@ async function turnType(c: ClassRow, classtype: number) {
   const data = await res.json()
   const out = data.data
   if (Array.isArray(out) && out[0] === true) loadClass()
-  else alert(Array.isArray(out) ? out[1] : (data.data || '操作失败'))
+  else showAlert(Array.isArray(out) ? out[1] : (data.data || '操作失败'), 'error')
 }
 
-function confirmDel(c: ClassRow) {
-  if (!confirm(`确定删除分类「${c.classname}」？`)) return
+async function confirmDel(c: ClassRow) {
+  const ok = await showConfirm(`确定删除分类「${c.classname}」？`, 'warning')
+  if (!ok) return
   doDel(c.classid)
 }
 
@@ -182,29 +192,19 @@ async function doDel(classid: number) {
   const data = await res.json()
   const out = data.data
   if (Array.isArray(out) && out[0] === true) loadClass()
-  else alert(Array.isArray(out) ? out[1] : (data.data || '删除失败'))
+  else showAlert(Array.isArray(out) ? out[1] : (data.data || '删除失败'), 'error')
 }
 
 onMounted(() => loadClass())
 </script>
 
 <style scoped>
-.class-page { min-height: 100vh; padding-bottom: 1rem; }
-.main { padding: 1rem; max-width: 600px; margin: 0 auto; }
-.section { margin-bottom: 1.5rem; }
-.section h2 { font-size: 1rem; margin-bottom: 0.5rem; }
-.form .field { margin-bottom: 0.5rem; }
-.form .field label { display: inline-block; min-width: 4rem; }
-.list-table { width: 100%; border-collapse: collapse; }
-.list-table th, .list-table td { border: 1px solid #ddd; padding: 0.4rem; text-align: left; }
-.btn-link { background: none; border: none; color: #19a7f0; cursor: pointer; padding: 0 0.25rem; margin-right: 0.25rem; }
-.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: #fff; padding: 1rem; border-radius: 8px; min-width: 280px; }
-.modal h3 { margin-top: 0; }
-.modal .field { margin-bottom: 0.5rem; }
-.modal .field label { display: block; }
-.back-link { margin-top: 1rem; }
-.back-link a { color: #19a7f0; text-decoration: none; }
-.btn { margin-right: 0.5rem; margin-top: 0.5rem; }
-.muted { color: #666; font-size: 0.9rem; }
+.class-page { min-height: 100vh; padding-bottom: var(--space-xl); }
+.section { margin-bottom: var(--space-xl); }
+.section .card-title { margin-bottom: var(--space-md); }
+.form .field label { display: block; }
+.table-wrap { margin-bottom: var(--space-md); }
+.btn-link { margin-right: var(--space-sm); }
+.modal .btn { margin-right: var(--space-sm); margin-top: var(--space-sm); }
+.back-link { margin-top: var(--space-lg); }
 </style>

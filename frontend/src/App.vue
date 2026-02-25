@@ -1,21 +1,26 @@
 <template>
   <div class="app">
     <router-view />
+    <AlertModal />
+    <ConfirmModal />
   </div>
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
+import AlertModal from './components/AlertModal.vue'
+import ConfirmModal from './components/ConfirmModal.vue'
+import { useAppStore } from './stores/app'
+
+const appStore = useAppStore()
+appStore.loadVersion()
+
+watch(() => appStore.title, (t) => {
+  document.title = t || '小歆记账'
+}, { immediate: true })
 </script>
 
 <style>
-* { box-sizing: border-box; }
-html, body, #app, .app {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 16px;
-  color: #333;
-  background: #f5f5f5;
-}
+@import './assets/styles/variables.css';
+@import './assets/styles/base.css';
 </style>

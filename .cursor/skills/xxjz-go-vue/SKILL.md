@@ -23,6 +23,19 @@ description: 小歆记账项目 Go 后端与 Vue3 前端的代码风格与约定
 - **风格**: 组件使用 `<script setup>` 与 Composition API；样式使用 scoped；避免内联魔法数字，可抽成常量。
 - **与后端**: 不单独定义一套接口格式，与现有 API 文档（docs/API.md）一致；登录态依赖 Cookie Session，不在前端存密码。
 
+### 前端 UI 风格与设计规范
+
+- **设计变量**: 使用全局 CSS 变量（`frontend/src/assets/styles/variables.css`），禁止在组件内硬编码主色、收入/支出/余额色。新页面与组件应使用 `var(--color-primary)`、`var(--color-income)`、`var(--color-expense)`、`var(--color-balance)` 以及 `var(--radius-md)`、`var(--space-*)`、`var(--shadow-*)` 等。
+- **图标**: 统一使用 Lucide 图标（`lucide-vue-next`，Vue 3 兼容），按需引入。导航、Header、收支类型、列表操作、空状态等应配有合适图标，保持风格一致。
+- **组件类名约定**: 按钮 `.btn`、`.btn-primary`、`.btn-danger`、`.btn-default`、`.btn-outline`；卡片 `.card`、`.card-title`；表单 `.field`、`.field label`、`.field input`、`.field select`；表格 `.list-table` 及语义色类 `.money-in`、`.money-out`、`.money-balance`；模态 `.modal-mask`、`.modal`；分页 `.pagination`；链接 `.back-link`、`.btn-link`；内容区 `.container`、`.page-main`；表格横向滚动容器 `.table-wrap`。
+- **返回主页 / 返回上一级**: 主操作统一使用按钮样式：`<router-link to="/home" class="btn btn-default">返回</router-link>`；若需留白可包在 `<p class="back-link">` 内。禁止将「返回主页」做成仅依赖 `.back-link a` 的纯文字链接。
+- **页面内主操作（导航、筛选、次要 CTA）**: 优先使用 `.btn`、`.btn-primary`、`.btn-default`、`.btn-outline`，按功能选择；禁止将明显的主操作（如年度切换、展开更多）做成纯文字链接（无 .btn）。
+- **表格内紧凑操作**: 编辑/删除/转为支出等可继续使用 `.btn-link`（无边框、主色/危险色），或使用小号 `.btn .btn-outline`；不要求与主 CTA 同款实心按钮。
+- **多端适配**: 采用移动优先；使用统一断点（640px / 768px / 1024px / 1280px）；列表/表格在窄屏使用 `.table-wrap` 横向滚动或卡片列表，避免撑破视口；触控目标不小于约 44px（使用 `var(--touch-min)`）；新页面需在手机、平板、PC 下均可正常使用。
+- **提示弹窗**: 统一使用项目封装的 `useAlert()` 的 `show(message, type?)` 进行提示（见 `frontend/src/composables/useAlert.ts`），由 `AlertModal` 组件统一渲染；禁止使用原生 `alert()`。`type` 可选 `'info'`（默认）、`'success'`、`'warning'`、`'error'`，用于区分提示、成功、警告、错误等场景，弹窗会展示对应图标与按钮样式。提示样式遵循 design tokens 与全局 `.modal-mask`、`.modal` 约定。
+- **确认弹窗**: 需用户确认再执行的操作（如删除前二次确认）统一使用 `useConfirm()` 的 `showConfirm(message, type?)`（见 `frontend/src/composables/useConfirm.ts`），返回 `Promise<boolean>`，由 `ConfirmModal` 组件统一渲染（取消 / 确定）；禁止使用原生 `confirm()`。调用示例：`const ok = await showConfirm('确定删除？', 'warning'); if (!ok) return;`。`type` 可选 `'warning'`（默认）、`'error'`、`'info'`，用于图标与确定按钮样式。
+- 新页面与组件需遵循同一套 design tokens、类名约定与多端规则，以保持与现有 UI 一致。
+
 ## 通用
 
 - **配置**: 以项目根目录或 backend 下的 `config.yaml` 为准；环境变量仅作覆盖，不替代完整配置。
