@@ -83,7 +83,7 @@
         </div>
       </div>
 
-      <p class="back-link"><router-link to="/home">返回主页</router-link></p>
+      <p class="back-link"><router-link to="/home" class="btn btn-default">返回</router-link></p>
     </main>
   </div>
 </template>
@@ -221,5 +221,4 @@ onMounted(() => {
 .btn-link { margin-right: var(--space-sm); }
 .modal .btn { margin-right: var(--space-sm); margin-top: var(--space-sm); }
 .back-link { margin-top: var(--space-lg); }
-.back-link a { color: var(--color-primary); text-decoration: none; }
 </style>

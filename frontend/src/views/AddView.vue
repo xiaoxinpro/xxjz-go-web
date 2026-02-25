@@ -19,7 +19,7 @@
         <form class="form" @submit.prevent="onSubmit">
           <div class="field">
             <label>金额</label>
-            <input v-model.number="form.money" type="number" step="0.01" min="0" placeholder="输入金额" required />
+            <input v-model="form.money" type="number" step="0.01" min="0" placeholder="输入金额" required />
           </div>
           <div v-if="funds.length > 1" class="field">
             <label>账户</label>
@@ -106,7 +106,7 @@ const funds = ref<Fund[]>([])
 const classMap = ref<{ in: Record<string, string>; out: Record<string, string> }>({ in: {}, out: {} })
 
 const form = ref({
-  money: 0 as number,
+  money: '' as number | string,
   fid: -1 as number,
   acclassid: 0 as number,
   acremark: '',
@@ -227,10 +227,15 @@ function uploadPendingFiles (acid: number): Promise<void> {
 function onSubmit () {
   const uid = userStore.uid
   if (uid <= 0) return
+  const moneyNum = Number(form.value.money)
+  if (!Number.isFinite(moneyNum) || moneyNum < 0) {
+    alert('请输入有效金额')
+    return
+  }
   const zhifu = activeTab.value === 'out' ? 2 : 1
   const fid = form.value.fid
   const payload = {
-    acmoney: Number(form.value.money),
+    acmoney: moneyNum,
     acclassid: form.value.acclassid,
     actime: form.value.actime || new Date().toISOString().slice(0, 10),
     acremark: form.value.acremark || '',
@@ -258,14 +263,14 @@ function onSubmit () {
         if (acid != null && pendingFiles.value.length > 0) {
           uploadPendingFiles(acid).then(() => {
             alert(d.msg || '添加成功')
-            form.value.money = 0
+            form.value.money = ''
             form.value.acremark = ''
             form.value.actime = new Date().toISOString().slice(0, 10)
             loadFind()
           })
         } else {
           alert(d.msg || '添加成功')
-          form.value.money = 0
+          form.value.money = ''
           form.value.acremark = ''
           form.value.actime = new Date().toISOString().slice(0, 10)
           pendingFiles.value = []

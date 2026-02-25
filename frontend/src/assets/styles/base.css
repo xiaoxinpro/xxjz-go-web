@@ -242,6 +242,10 @@ html, body, #app, .app {
   font-size: inherit;
   min-height: auto;
 }
+.back-link .btn {
+  width: 100%;
+  margin-top: var(--space-sm);
+}
 
 /* 摘要/徽章 */
 .summary-line .money-in { color: var(--color-income); }

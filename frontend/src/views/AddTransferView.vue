@@ -2,24 +2,36 @@
   <div class="transfer-page">
     <AppHeader />
     <main class="main page-main">
+      <div class="tabs card">
+        <router-link to="/add" class="tab">
+          <ArrowDownCircle size="20" class="tab-icon" /> 支出
+        </router-link>
+        <router-link to="/add" class="tab">
+          <ArrowUpCircle size="20" class="tab-icon" /> 收入
+        </router-link>
+        <router-link to="/add/transfer" class="tab" :class="{ active: $route.path === '/add/transfer' }">
+          <ArrowLeftRight size="20" class="tab-icon" /> 转账
+        </router-link>
+      </div>
+
       <div class="form-card card">
         <h2 class="card-title"><ArrowRightLeft size="22" class="title-icon" /> 账户转账</h2>
         <form class="form" @submit.prevent="onSubmit">
           <div class="field">
             <label>转账金额</label>
-            <input v-model.number="form.money" type="number" step="0.01" min="0" placeholder="输入转账金额" required />
+            <input v-model="form.money" type="number" step="0.01" min="0" placeholder="输入转账金额" required />
           </div>
           <div class="field">
             <label>转出账户</label>
-            <select v-model.number="form.source_fid" required>
-              <option value="">选择转出账户</option>
+            <select v-model="form.source_fid" required>
+              <option value="" disabled>选择转出账户</option>
               <option v-for="f in funds" :key="f.fundsid" :value="f.fundsid">{{ f.fundsname }}</option>
             </select>
           </div>
           <div class="field">
             <label>转入账户</label>
-            <select v-model.number="form.target_fid" required>
-              <option value="">选择转入账户</option>
+            <select v-model="form.target_fid" required>
+              <option value="" disabled>选择转入账户</option>
               <option v-for="f in funds" :key="f.fundsid" :value="f.fundsid">{{ f.fundsname }}</option>
             </select>
           </div>
@@ -45,7 +57,7 @@ import { ref, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
 import AppHeader from '../components/AppHeader.vue'
 import NavBars from '../components/NavBars.vue'
-import { ArrowRightLeft } from 'lucide-vue-next'
+import { ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from 'lucide-vue-next'
 
 const API = '/api'
 
@@ -60,9 +72,9 @@ function base64Json (obj: Record<string, unknown>): string {
 interface Fund { fundsid: number; fundsname: string }
 const funds = ref<Fund[]>([])
 const form = ref({
-  money: 0 as number,
-  source_fid: 0 as number,
-  target_fid: 0 as number,
+  money: '' as number | string,
+  source_fid: '' as number | string,
+  target_fid: '' as number | string,
   mark: '',
   time: '',
 })
@@ -78,14 +90,25 @@ function loadFunds () {
 }
 
 function onSubmit () {
-  if (form.value.source_fid === form.value.target_fid) {
+  const moneyNum = Number(form.value.money)
+  if (!Number.isFinite(moneyNum) || moneyNum <= 0) {
+    alert('请输入有效转账金额')
+    return
+  }
+  const src = form.value.source_fid === '' ? NaN : Number(form.value.source_fid)
+  const tgt = form.value.target_fid === '' ? NaN : Number(form.value.target_fid)
+  if (!Number.isFinite(src) || !Number.isFinite(tgt)) {
+    alert('请选择转出账户和转入账户')
+    return
+  }
+  if (src === tgt) {
     alert('转出账户与转入账户不能相同')
     return
   }
   const payload = {
-    money: Number(form.value.money),
-    source_fid: form.value.source_fid,
-    target_fid: form.value.target_fid,
+    money: moneyNum,
+    source_fid: src,
+    target_fid: tgt,
     mark: form.value.mark || '',
     time: form.value.time || new Date().toISOString().slice(0, 10),
   }
@@ -107,7 +130,9 @@ function onSubmit () {
       const d = data.data as { ret?: boolean; msg?: string }
       if (d && d.ret) {
         alert(d.msg || '转账成功')
-        form.value.money = 0
+        form.value.money = ''
+        form.value.source_fid = ''
+        form.value.target_fid = ''
         form.value.mark = ''
         form.value.time = new Date().toISOString().slice(0, 10)
       } else {
@@ -141,6 +166,38 @@ onMounted(() => {
 .title-icon {
   color: var(--color-primary);
 }
+.tabs.card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.95rem;
+  min-height: var(--touch-min);
+}
+.tab:hover {
+  background: var(--color-bg);
+}
+.tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.tab-icon {
+  flex-shrink: 0;
+}
+
 .form button,
 .form .btn {
   width: 100%;

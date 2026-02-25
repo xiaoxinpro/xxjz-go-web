@@ -4,7 +4,7 @@
     <main class="main page-main">
       <div class="card">
         <p class="muted">编辑转账功能开发中。</p>
-        <p class="back-link"><router-link to="/home">返回主页</router-link></p>
+        <p class="back-link"><router-link to="/home" class="btn btn-default">返回</router-link></p>
       </div>
     </main>
     <NavBars current="home" />

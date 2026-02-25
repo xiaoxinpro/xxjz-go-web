@@ -82,7 +82,7 @@
         <button type="button" :disabled="page >= pagemax" @click="goPage(page + 1)">下一页</button>
       </div>
       <p v-else-if="pagemax === 1 && listData.length > 0" class="more-link">
-        <button type="button" class="link-btn" @click="scrollToMoneyTable">更多记账明细</button>
+        <button type="button" class="btn btn-outline" @click="scrollToMoneyTable">更多记账明细</button>
       </p>
     </main>
     <NavBars current="home" />
@@ -329,20 +329,5 @@ onMounted(() => {
 
 .more-link {
   margin-bottom: var(--space-lg);
-}
-.link-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: inherit;
-  color: var(--color-primary);
-  cursor: pointer;
-  text-decoration: none;
-  min-height: var(--touch-min);
-  display: inline-flex;
-  align-items: center;
-}
-.link-btn:hover {
-  text-decoration: underline;
 }
 </style>

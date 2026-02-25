@@ -3,9 +3,9 @@
     <AppHeader />
     <main class="main page-main">
       <div class="year-nav card">
-        <router-link :to="`/chart`" class="year-link" @click.prevent="setYear(year - 1)">« {{ year - 1 }}年</router-link>
+        <router-link :to="`/chart`" class="btn btn-outline" @click.prevent="setYear(year - 1)">« {{ year - 1 }}年</router-link>
         <span class="year-current">{{ year }}年</span>
-        <router-link :to="`/chart`" class="year-link" @click.prevent="setYear(year + 1)">{{ year + 1 }}年 »</router-link>
+        <router-link :to="`/chart`" class="btn btn-outline" @click.prevent="setYear(year + 1)">{{ year + 1 }}年 »</router-link>
       </div>
       <p v-if="error" class="error">{{ error }}</p>
       <p v-else-if="!chartData && !loading" class="empty">暂无数据</p>
@@ -16,7 +16,7 @@
           <div ref="chartOutRef" class="chart-pie"></div>
         </div>
       </template>
-      <p class="back-link"><router-link to="/home">返回主页</router-link></p>
+      <p class="back-link"><router-link to="/home" class="btn btn-default">返回</router-link></p>
     </main>
   </div>
 </template>
@@ -180,14 +180,6 @@ onUnmounted(() => {
   margin-bottom: var(--space-lg);
 }
 .year-current { font-weight: 600; color: var(--color-text); }
-.year-link {
-  color: var(--color-primary);
-  text-decoration: none;
-  min-height: var(--touch-min);
-  display: inline-flex;
-  align-items: center;
-}
-.year-link:hover { text-decoration: underline; }
 .error, .empty {
   color: var(--color-danger);
   text-align: center;
@@ -205,6 +197,4 @@ onUnmounted(() => {
 }
 .chart-pie { height: 280px; min-height: 220px; }
 .back-link { margin-top: var(--space-xl); }
-.back-link a { color: var(--color-primary); text-decoration: none; }
-.back-link a:hover { text-decoration: underline; }
 </style>
